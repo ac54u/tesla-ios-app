@@ -10,8 +10,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
 // 1. 修复警告：使用最新的 SafeAreaView 替代 react-native 自带的
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 // 引入 3D 渲染核心库
 import { Canvas } from '@react-three/fiber/native';
 // 移除了 Environment，避免因为从 GitHub 下载环境贴图导致的网络卡死
@@ -34,7 +36,7 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
       object={scene} 
       scale={1.65}                    // 更大，更有冲击力
       position={[0, -1.05, 0]}       // 完全居中
-      rotation={[0.05, Math.PI * 1.05, 0]} // 精确侧面视角（车头朝左，像你截图一样）
+      rotation={[0.05, Math.PI * 1.05, 0]} // 精确侧面视角（车头朝左）
     />
   );
 }
@@ -114,6 +116,7 @@ export default function App() {
       const vId = vData.response[0]?.id;
       if (!vId) return;
       setVehicleId(vId);
+
       const dataRes = await fetch(`https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles/${vId}/vehicle_data`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
@@ -124,6 +127,7 @@ export default function App() {
       
       if (chargeState?.battery_range) setRange(Math.round(chargeState.battery_range).toString());
       if (climateState?.inside_temp) setTemp(climateState.inside_temp.toFixed(1));
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('获取车辆数据失败:', errorMessage);
@@ -157,7 +161,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* 🌟 升级点 1：把 3D 渲染区移到 ScrollView 的外面！ */}
+      {/* 🌟 升级点：3D 渲染区已经移出 ScrollView，彻底解决手势冲突 */}
       <View style={styles.imageContainer}>
         <Canvas 
           style={styles.canvas}
@@ -170,7 +174,7 @@ export default function App() {
           <Suspense fallback={null}>
             <Tesla3DModel setModelLoaded={setModelLoaded} />
           </Suspense>
-          
+
           <OrbitControls
             enableZoom={false}
             enablePan={false}
@@ -194,7 +198,7 @@ export default function App() {
         </View>
       </View>
 
-      {/* 🌟 升级点 2：ScrollView 只包裹下方的控制面板 */}
+      {/* 🌟 底部的内容控制面板被 ScrollView 独立包裹，互不干扰 */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.headerRow}>
@@ -204,8 +208,7 @@ export default function App() {
               <Text style={styles.subText}>续航</Text>
             </View>
           </View>
-          
-          {/* ... 下方的 infoGrid, controls, tokenSection 全部保持原样 ... */}
+
           <View style={styles.infoGrid}>
             <View style={styles.infoCol}>
               <Text style={styles.tempText}>{temp}°C</Text>
@@ -250,9 +253,10 @@ export default function App() {
           </View>
         </View>
       </ScrollView>
-      
+
     </SafeAreaView>
   );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
