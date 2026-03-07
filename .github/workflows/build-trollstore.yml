@@ -1,6 +1,5 @@
 name: Build TrollStore IPA
 
-# 触发条件：当你推送代码到 main 分支，或者在网页端手动点击运行
 on:
   push:
     branches: [ main ]
@@ -8,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest # 使用 GitHub 免费提供的最新 Mac 虚拟机
+    runs-on: macos-latest
     
     steps:
       - name: 📥 获取最新代码
@@ -25,24 +24,25 @@ jobs:
       - name: 🏗️ 生成 iOS 原生工程
         run: npx expo prebuild --platform ios --clean
 
-      - name: 🔨 编译无签名 iOS 核心程序 (耗时较长，请耐心等待)
+      - name: 🍏 强制安装 CocoaPods 依赖
         run: |
           cd ios
-          # 精确指定你的主工程名称，Expo 默认是你的项目名（去除了特殊字符）
-          # 根据你的项目名 'tesla-ios-app'，默认的 scheme 应该是 'teslaiosapp'
-          # 为了保险，我们通过 xcodebuild 自动列出所有 scheme 并取含有 app/app 名的那个
+          pod install
+
+      - name: 🔨 编译无签名 iOS 核心程序 (暴力破解 Xcode 15 签名限制)
+        run: |
+          cd ios
           
+          # 【终极方案】直接提取 Workspace 的文件名作为 Scheme，100% 准确
           WORKSPACE=$(ls | grep .xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           
-          # 过滤掉 Pods 和 Expo 相关组件，抓取最真实的 App Scheme
-          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | grep -v 'Pods' | grep -v 'EX' | grep -v 'Expo' | grep -v 'React' | awk 'NR>1 {print $1; exit}')
-          
-          echo "==== 正在编译 ===="
+          echo "==== 开始精准编译 ===="
           echo "Workspace: $WORKSPACE"
           echo "Scheme: $SCHEME"
-          echo "================="
+          echo "======================"
           
-          # 强制关闭苹果的签名校验进行裸编译
+          # 加入所有能关闭签名和权限校验的 Xcode 参数
           xcodebuild archive \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
@@ -51,10 +51,19 @@ jobs:
             -archivePath $PWD/build/App.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            ENTITLEMENTS_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
             
-          # 按照苹果 IPA 的标准结构打包 Payload
+          # 提取并生成巨魔 IPA
           mkdir -p Payload
-          # 从固定的 App.xcarchive 提取 .app 文件
           cp -r $PWD/build/App.xcarchive/Products/Applications/*.app Payload/
           zip -qr ../TrollStore_Tesla.ipa Payload
+
+      - name: 📤 上传打包好的 IPA 文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrollStore_Tesla_App
+          path: TrollStore_Tesla.ipa
+          retention-days: 7
