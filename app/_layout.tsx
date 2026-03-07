@@ -34,8 +34,8 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
       <Center>
         <primitive 
           object={scene} 
-          scale={1.4}                     
-          rotation={[0, Math.PI / 1.2, 0]} 
+          scale={1.65}                     
+          rotation={[0, -Math.PI / 2.5, 0]} 
         />
       </Center>
     </group>
@@ -251,7 +251,12 @@ export default function App() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            <TouchableOpacity activeOpacity={0.6} onPress={() => fetchCarData()} onLongPress={handleResetToken}>
+            <TouchableOpacity 
+              activeOpacity={0.6} 
+              onPress={() => refreshToken ? fetchCarData() : undefined} 
+              onLongPress={refreshToken ? handleResetToken : undefined}
+              disabled={!refreshToken} // 🌟 核心修复：如果没有登录，直接禁用点击和长按
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.title}>{vehicleName}</Text>
                 {vehicleId ? <Text style={styles.refreshIcon}> 🔄</Text> : null}
