@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
 import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,7 +43,6 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
   );
 }
 
-// 占位加载动画
 function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
@@ -63,7 +63,6 @@ export default function App() {
   const [locationText, setLocationText] = useState('定位获取中...');
   const [modelLoaded, setModelLoaded] = useState(false);
 
-  // 🌟 1. 监听来自服务器端传回的 Deep Link
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
@@ -79,10 +78,8 @@ export default function App() {
       }
     };
 
-    // 注册监听器
     const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
     
-    // 处理冷启动时的 Deep Link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
@@ -92,7 +89,6 @@ export default function App() {
     };
   }, []);
 
-  // 2. 初始化加载本地 Token
   useEffect(() => {
     const loadToken = async () => {
       const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
@@ -106,7 +102,6 @@ export default function App() {
     loadToken();
   }, []);
 
-  // 🌟 触发 OAuth 2.0 登录流程
   const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
@@ -150,7 +145,7 @@ export default function App() {
         body: JSON.stringify({
           grant_type: 'refresh_token',
           refresh_token: currentToken,
-          client_id: 'c4b90abb-d606-40e2-aa7a-2d7997dd584e' // ✅ 必须使用你真实的 client_id
+          client_id: 'c4b90abb-d606-40e2-aa7a-2d7997dd584e' 
         })
       });
       const data = await res.json();
@@ -246,7 +241,18 @@ export default function App() {
             <OrbitControls enableZoom={false} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} minPolarAngle={Math.PI / 2.2} maxPolarAngle={Math.PI / 2.2} />
           </Canvas>
           {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
-          <View style={styles.statusBadge}><Text style={styles.statusText}>已驻车</Text></View>
+          
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>已驻车</Text>
+          </View>
+
+          {/* 🌟 调整后的精致版菜单按钮 */}
+          <TouchableOpacity 
+            style={styles.menuIconContainer} 
+            onPress={() => Alert.alert('菜单', '设置和更多功能即将开放！')}
+          >
+            <Ionicons name="menu" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -255,7 +261,7 @@ export default function App() {
               activeOpacity={0.6} 
               onPress={() => refreshToken ? fetchCarData() : undefined} 
               onLongPress={refreshToken ? handleResetToken : undefined}
-              disabled={!refreshToken} // 🌟 核心修复：如果没有登录，直接禁用点击和长按
+              disabled={!refreshToken}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.title}>{vehicleName}</Text>
@@ -316,6 +322,8 @@ const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
+  // 🌟 微调位置，让它看起来更居中
+  menuIconContainer: { position: 'absolute', top: 14, right: 18, zIndex: 10, padding: 6 },
   contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
