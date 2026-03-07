@@ -16,7 +16,7 @@ jobs:
       - name: ⚙️ 配置 Node.js 环境
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # 必须升级到 20+ 才能支持 toReversed 方法
           cache: 'npm'
 
       - name: 📦 安装项目依赖
@@ -32,14 +32,15 @@ jobs:
 
       - name: 🔨 编译无签名 iOS 核心程序
         run: |
-          # 关键步骤：创建一个能被 Xcode 识别的 .xcode.env 文件
+          # 确保 Xcode 能够正确识别 Node 20 路径
           echo "export NODE_BINARY=$(which node)" > ios/.xcode.env.local
           
           cd ios
           WORKSPACE=$(ls | grep .xcworkspace | head -1)
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           
-          # 暴力禁用所有签名、索引并注入 Node 路径
+          echo "==== 开始精准编译 (Node 20 环境) ===="
+          
           xcodebuild archive \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
@@ -51,8 +52,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            COMPILER_INDEX_STORE_ENABLE=NO \
-            NODE_BINARY=$(which node)
+            COMPILER_INDEX_STORE_ENABLE=NO
             
           mkdir -p Payload
           cp -r $PWD/build/App.xcarchive/Products/Applications/*.app Payload/
