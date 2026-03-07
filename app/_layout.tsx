@@ -20,13 +20,16 @@ import { OrbitControls, useGLTF } from '@react-three/drei/native';
 
 // --- 3D 车辆组件 ---
 // --- 修改后的 3D 车辆组件 (使用 jsDelivr CDN) ---
+// --- 修改后的 3D 车辆组件 (使用你自己 GitHub 仓库的专属 CDN 直链) ---
 function Tesla3DModel() {
-  // 使用 jsDelivr 代理 GitHub 仓库文件，彻底解决国内加载卡死的问题
-  const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-dashboard@main/tesla_cybertruck.glb') as any;
+  // 直接使用加速后的专属网络直链，彻底告别本地加载卡死问题
+  const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
   
+  // 赛博皮卡的尺寸可能和 Model Y 不太一样。
+  // 如果出来后发现车太大、太小，你可以修改 scale (缩放比例，例如改成 1.0 或 2.0)
+  // 如果车子太靠上或靠下，可以修改 position (Y轴高度，例如 [-1, -1.5, 0])
   return <primitive object={scene} scale={1.5} position={[0, -1, 0]} />;
 }
-
 // 占位加载动画（当模型还没解析完时显示）
 function FallbackLoader() {
   return (
