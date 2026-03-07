@@ -37,37 +37,34 @@ function Tesla3DModel() {
   );
 }
 
-// 🌟 新增：大灯和体积光束组件
+// 🌟 修复后的大灯和体积光束组件
 function HeadlightAndBeam() {
   return (
     <group>
-      {/* 🌟 核心：手动创建一个发光的圆锥体来模拟体积光束 */}
+      {/* 1. 模拟体积光束的圆锥体 */}
       <primitive
         object={new THREE.Mesh(
-          new THREE.ConeGeometry(0.12, 5, 32), // 圆锥体：底径0.12，高5
-          new THREE.MeshEmissiveMaterial({   // 使用发光材质
-            color: 'white',
-            emissive: 'white',
-            emissiveIntensity: 20, // 足够高以产生光感
-            transparent: true,     // 透明
-            opacity: 0.6,          // 调整不透明度，让光束更柔和
+          new THREE.ConeGeometry(0.15, 6, 32), 
+          new THREE.MeshEmissiveMaterial({   
+            color: '#ffffff',
+            emissive: '#ffffff',
+            emissiveIntensity: 10, 
+            transparent: true,     
+            opacity: 0.4,          
+            depthWrite: false // 避免光束遮挡车身产生奇怪的锯齿
           })
         )}
-        // 🌟 将光束放置在侧视图中清晰可见的左大灯位置
-        position={[1.5, 0.2, 0]} // 根据模型估算大灯坐标
-        rotation={[Math.PI / 2, 0, 0]} // 垂直向前射出
+        // 调整位置和旋转，让光锥底部朝前射出
+        position={[2.0, 0.2, 0]} 
+        rotation={[0, 0, -Math.PI / 2]} 
       />
       
-      {/* 🌟 添加一个点光源（SpotLight），不仅有光束，还要照亮场景 */}
-      <SpotLight
-        position={[1.5, 0.2, 0]} // 与光束位置一致
-        target={new THREE.Object3D().set(new THREE.Vector3(10, 0, 0))} // 向前瞄准
-        distance={10}
-        intensity={10} // 足够强
-        color="white"
-        angle={Math.PI / 4}
-        penumbra={0.5}
-        castShadow
+      {/* 2. 真实的点光源，用于照亮车前方 */}
+      <pointLight 
+        position={[2.0, 0.2, 0]} 
+        intensity={20} 
+        distance={10} 
+        color="#ffffff" 
       />
     </group>
   );
