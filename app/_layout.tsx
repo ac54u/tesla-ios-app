@@ -17,7 +17,7 @@ import { Canvas } from '@react-three/fiber/native';
 // 移除了 Environment，避免因为从 GitHub 下载环境贴图导致的网络卡死
 import { OrbitControls, useGLTF } from '@react-three/drei/native';
 
-// --- 3D 车辆组件（已优化位置 + 朝向）---
+// --- 3D 车辆组件（已精确调整为你要的侧面效果）---
 interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
 }
@@ -32,9 +32,9 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
   return (
     <primitive 
       object={scene} 
-      scale={1.5} 
-      position={[-0.8, -1.2, 0]}     // ← 向左平移，解决“靠右”问题
-      rotation={[0, Math.PI * 0.05, 0]} // ← 轻微调整车头朝向，更正
+      scale={1.65}                    // 更大，更有冲击力
+      position={[0, -1.05, 0]}       // 完全居中
+      rotation={[0.05, Math.PI * 1.05, 0]} // 精确侧面视角（车头朝左，像你截图一样）
     />
   );
 }
@@ -162,7 +162,7 @@ export default function App() {
           
           <Canvas 
             style={styles.canvas}
-            camera={{ position: [5, 2.8, 7.5], fov: 42 }}   // ← 相机优化，更好看
+            camera={{ position: [3.5, 2.8, 7.2], fov: 40 }}   // ← 相机专为侧面视角优化
           >
             <ambientLight intensity={1.2} />
             <directionalLight position={[10, 10, 5]} intensity={2} color="white" />
@@ -174,9 +174,9 @@ export default function App() {
             <OrbitControls
               enableZoom={false}
               enablePan={false}
-              enableDamping={true}           // ← 手指松开后自然惯性滑动
+              enableDamping={true}
               dampingFactor={0.08}
-              rotateSpeed={1.8}              // ← 滑动灵敏度大幅提升
+              rotateSpeed={1.8}
               minPolarAngle={Math.PI * 0.35}
               maxPolarAngle={Math.PI * 0.95}
             />
