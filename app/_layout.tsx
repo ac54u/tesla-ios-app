@@ -24,6 +24,7 @@ interface Tesla3DModelProps {
 }
 
 function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
+  // 使用 GITHUB 上的托管模型
   const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
 
   useEffect(() => {
@@ -35,14 +36,15 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
       <Center>
         <primitive 
           object={scene} 
-          scale={1.65}                     
-          rotation={[0, -Math.PI / 2.5, 0]} 
+          scale={1.4}                     
+          rotation={[0, Math.PI / 1.2, 0]} 
         />
       </Center>
     </group>
   );
 }
 
+// 占位加载动画
 function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
@@ -63,6 +65,7 @@ export default function App() {
   const [locationText, setLocationText] = useState('定位获取中...');
   const [modelLoaded, setModelLoaded] = useState(false);
 
+  // 1. 监听来自服务器端传回的 Deep Link
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
@@ -89,6 +92,7 @@ export default function App() {
     };
   }, []);
 
+  // 2. 初始化加载本地 Token
   useEffect(() => {
     const loadToken = async () => {
       const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
@@ -102,6 +106,7 @@ export default function App() {
     loadToken();
   }, []);
 
+  // 触发 OAuth 2.0 登录流程
   const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
@@ -229,6 +234,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        {/* 3D 车辆展示区 */}
         <View style={styles.imageContainer}>
           <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
             <color attach="background" args={['#000000']} />
@@ -246,15 +252,16 @@ export default function App() {
             <Text style={styles.statusText}>已驻车</Text>
           </View>
 
-          {/* 🌟 调整后的精致版菜单按钮 */}
+          {/* 右上角菜单按钮 */}
           <TouchableOpacity 
             style={styles.menuIconContainer} 
             onPress={() => Alert.alert('菜单', '设置和更多功能即将开放！')}
           >
-            <Ionicons name="menu" size={22} color="#fff" />
+            <Ionicons name="menu" size={30} color="#fff" />
           </TouchableOpacity>
         </View>
 
+        {/* 车辆信息与控制区 */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
             <TouchableOpacity 
@@ -300,11 +307,12 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
+          {/* 登录部分 */}
           {!refreshToken && (
             <View style={styles.tokenSection}>
               <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
-              <TouchableOpacity style={styles.buttonWhite} onPress={handleTeslaOAuthLogin}>
-                <Text style={styles.buttonTextDark}>🛡️ 登录特斯拉账号</Text>
+              <TouchableOpacity style={styles.buttonAuthRed} onPress={handleTeslaOAuthLogin}>
+                <Text style={styles.buttonTextWhiteLarge}>登录 Tesla 账号</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -322,8 +330,7 @@ const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
-  // 🌟 微调位置，让它看起来更居中
-  menuIconContainer: { position: 'absolute', top: 14, right: 18, zIndex: 10, padding: 6 },
+  menuIconContainer: { position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 8 },
   contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
@@ -337,9 +344,28 @@ const styles = StyleSheet.create({
   controls: { gap: 10 },
   buttonDark: { backgroundColor: '#1C1C1E', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonWhite: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  buttonTextDark: { color: '#000', fontSize: 16, fontWeight: '600' },
+  // 核心样式：基础按钮文字
+  buttonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '500' 
+  },
+  // 核心样式：红色登录按钮 (无光晕)
+  buttonAuthRed: { 
+    backgroundColor: '#E31937', 
+    paddingVertical: 16, 
+    width: '100%',
+    borderRadius: 50, 
+    alignItems: 'center', 
+    marginTop: 10,
+  },
+  // 核心样式：红色登录按钮大号文字
+  buttonTextWhiteLarge: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
   tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
-  authDesc: { color: '#888', fontSize: 13, marginBottom: 5 },
+  authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
 });
