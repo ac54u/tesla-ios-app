@@ -257,7 +257,7 @@ export default function App() {
             style={styles.menuIconContainer} 
             onPress={() => Alert.alert('菜单', '设置和更多功能即将开放！')}
           >
-            <Ionicons name="menu" size={30} color="#fff" />
+            <Ionicons name="menu" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
 
