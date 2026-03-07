@@ -1,0 +1,58 @@
+name: Build TrollStore IPA
+
+# 触发条件：当你推送代码到 main 分支，或者在网页端手动点击运行
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest # 使用 GitHub 免费提供的最新 Mac 虚拟机
+    
+    steps:
+      - name: 📥 获取最新代码
+        uses: actions/checkout@v4
+
+      - name: ⚙️ 配置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📦 安装项目依赖
+        run: npm install
+
+      - name: 🏗️ 生成 iOS 原生工程
+        run: npx expo prebuild --platform ios --clean
+
+      - name: 🔨 编译无签名 iOS 核心程序 (耗时较长，请耐心等待)
+        run: |
+          cd ios
+          # 自动获取工程名
+          WORKSPACE=$(ls | grep .xcworkspace | head -1)
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{getline; print $1}')
+          
+          echo "正在编译: $WORKSPACE | Scheme: $SCHEME"
+          
+          # 强制关闭苹果的签名校验进行裸编译
+          xcodebuild archive \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/$SCHEME.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+            
+          # 按照苹果 IPA 的标准结构打包 Payload
+          mkdir -p Payload
+          cp -r $PWD/build/$SCHEME.xcarchive/Products/Applications/*.app Payload/
+          zip -qr ../TrollStore_Tesla.ipa Payload
+
+      - name: 📤 上传打包好的 IPA 文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrollStore_Tesla_App
+          path: TrollStore_Tesla.ipa
+          retention-days: 7
