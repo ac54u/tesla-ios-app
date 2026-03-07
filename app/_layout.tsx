@@ -4,10 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking // 🌟 新增：用于拉起浏览器和监听 Deep Link 重定向
-  ,
-
-
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -69,7 +66,6 @@ export default function App() {
   // 🌟 1. 监听来自服务器端传回的 Deep Link
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
-      // 假设你的服务器处理完后，重定向到类似 dmittapp://callback?refresh_token=xxxxxxx
       const url = event.url;
       if (url && url.includes('refresh_token=')) {
         const tokenMatch = url.match(/refresh_token=([^&]+)/);
@@ -110,25 +106,16 @@ export default function App() {
     loadToken();
   }, []);
 
-// 🌟 触发 OAuth 2.0 登录流程
+  // 🌟 触发 OAuth 2.0 登录流程
   const handleTeslaOAuthLogin = async () => {
-    // ✅ 这里填入你真实的 Client ID（前端只放 ID，绝对不放 Secret）
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
-    
-    // ✅ 这里的回调地址必须和你在特斯拉后台配置的一字不差
     const redirectUri = 'https://dmitt.com/callback';
-    
-    // ✅ 请求的权限范围（获取车辆数据和控制车辆所需）
     const scope = 'openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds';
-    
-    // 随机生成一个 state 防止 CSRF 攻击
     const state = Math.random().toString(36).substring(7);
 
-    // 拼接特斯拉官方授权 URL (中国区使用 auth.tesla.cn)
     const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
     
     try {
-      // 拉起系统浏览器或内嵌 WebView
       await Linking.openURL(authUrl);
     } catch (error) {
       Alert.alert('错误', '无法打开浏览器，请检查系统设置');
@@ -163,7 +150,7 @@ export default function App() {
         body: JSON.stringify({
           grant_type: 'refresh_token',
           refresh_token: currentToken,
-          client_id: 'ownerapi' // 根据需要可能需要换成你自己的 client_id
+          client_id: 'c4b90abb-d606-40e2-aa7a-2d7997dd584e' // ✅ 必须使用你真实的 client_id
         })
       });
       const data = await res.json();
@@ -302,7 +289,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* 🌟 替换掉之前的输入框，改为优雅的授权登录按钮 */}
           {!refreshToken && (
             <View style={styles.tokenSection}>
               <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
