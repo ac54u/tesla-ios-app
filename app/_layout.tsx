@@ -156,44 +156,46 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 顶部 3D 渲染区 */}
-        <View style={styles.imageContainer}>
+      
+      {/* 🌟 升级点 1：把 3D 渲染区移到 ScrollView 的外面！ */}
+      <View style={styles.imageContainer}>
+        <Canvas 
+          style={styles.canvas}
+          camera={{ position: [3.5, 2.8, 7.2], fov: 40 }}
+        >
+          <ambientLight intensity={1.2} />
+          <directionalLight position={[10, 10, 5]} intensity={2} color="white" />
+          <directionalLight position={[-10, 5, -5]} intensity={1.5} color="white" />
           
-          <Canvas 
-            style={styles.canvas}
-            camera={{ position: [3.5, 2.8, 7.2], fov: 40 }}   // ← 相机专为侧面视角优化
-          >
-            <ambientLight intensity={1.2} />
-            <directionalLight position={[10, 10, 5]} intensity={2} color="white" />
-            <directionalLight position={[-10, 5, -5]} intensity={1.5} color="white" />
-            
-            <Suspense fallback={null}>
-              <Tesla3DModel setModelLoaded={setModelLoaded} />
-            </Suspense>
-            <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              enableDamping={true}
-              dampingFactor={0.08}
-              rotateSpeed={1.8}
-              minPolarAngle={Math.PI * 0.35}
-              maxPolarAngle={Math.PI * 0.95}
-            />
-          </Canvas>
+          <Suspense fallback={null}>
+            <Tesla3DModel setModelLoaded={setModelLoaded} />
+          </Suspense>
+          
+          <OrbitControls
+            enableZoom={false}
+            enablePan={false}
+            enableDamping={true}
+            dampingFactor={0.08}
+            rotateSpeed={1.8}
+            minPolarAngle={Math.PI * 0.35}
+            maxPolarAngle={Math.PI * 0.95}
+          />
+        </Canvas>
 
-          {/* 加载动画 */}
-          {!modelLoaded && (
-            <View style={StyleSheet.absoluteFill}>
-              <FallbackLoader />
-            </View>
-          )}
-
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>已驻车</Text>
+        {/* 加载动画 */}
+        {!modelLoaded && (
+          <View style={StyleSheet.absoluteFill}>
+            <FallbackLoader />
           </View>
-        </View>
+        )}
 
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>已驻车</Text>
+        </View>
+      </View>
+
+      {/* 🌟 升级点 2：ScrollView 只包裹下方的控制面板 */}
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>小攀的购物车</Text>
@@ -202,6 +204,8 @@ export default function App() {
               <Text style={styles.subText}>续航</Text>
             </View>
           </View>
+          
+          {/* ... 下方的 infoGrid, controls, tokenSection 全部保持原样 ... */}
           <View style={styles.infoGrid}>
             <View style={styles.infoCol}>
               <Text style={styles.tempText}>{temp}°C</Text>
@@ -212,6 +216,7 @@ export default function App() {
               <Text style={styles.subText}>当前位置</Text>
             </View>
           </View>
+
           <View style={styles.controls}>
             <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('door_lock')}>
               <Text style={styles.buttonText}>🔒 锁车</Text>
@@ -226,6 +231,7 @@ export default function App() {
               <Text style={styles.buttonText}>⚡ 开始充电</Text>
             </TouchableOpacity>
           </View>
+
           <View style={styles.tokenSection}>
             <TextInput
               style={styles.input}
@@ -244,9 +250,9 @@ export default function App() {
           </View>
         </View>
       </ScrollView>
+      
     </SafeAreaView>
   );
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
