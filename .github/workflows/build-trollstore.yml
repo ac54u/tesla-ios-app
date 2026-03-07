@@ -18,22 +18,26 @@ jobs:
         with:
           node-version: 18
 
+      - name: 🔗 修复 Xcode 找不到 Node 的问题 (解决 Exit Code 65 的核心)
+        run: |
+          # 强行把 node 链接到系统标准路径，防止 Xcode 脚本报 command not found
+          sudo ln -s $(which node) /usr/local/bin/node || true
+
       - name: 📦 安装项目依赖
         run: npm install
 
       - name: 🏗️ 生成 iOS 原生工程
         run: npx expo prebuild --platform ios --clean
 
-      - name: 🍏 强制安装 CocoaPods 依赖
+      - name: 🍏 安装 CocoaPods 依赖
         run: |
           cd ios
           pod install
 
-      - name: 🔨 编译无签名 iOS 核心程序 (暴力破解 Xcode 15 签名限制)
+      - name: 🔨 编译无签名 iOS 核心程序
         run: |
           cd ios
           
-          # 【终极方案】直接提取 Workspace 的文件名作为 Scheme，100% 准确
           WORKSPACE=$(ls | grep .xcworkspace | head -1)
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           
@@ -42,21 +46,19 @@ jobs:
           echo "Scheme: $SCHEME"
           echo "======================"
           
-          # 加入所有能关闭签名和权限校验的 Xcode 参数
+          # 增加 -destination 参数明确指定为 iOS 设备，防止 Xcode 15 迷失方向
           xcodebuild archive \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
             -configuration Release \
-            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -archivePath $PWD/build/App.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
-            ENTITLEMENTS_REQUIRED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            ENTITLEMENTS_REQUIRED=NO
             
-          # 提取并生成巨魔 IPA
           mkdir -p Payload
           cp -r $PWD/build/App.xcarchive/Products/Applications/*.app Payload/
           zip -qr ../TrollStore_Tesla.ipa Payload
