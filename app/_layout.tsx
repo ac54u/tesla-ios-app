@@ -2,27 +2,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert, // 🌟 新增：智能滚动容器
-  Keyboard // 🌟 新增：手动控制键盘
+  Alert,
+  KeyboardAvoidingView,
+  Linking // 🌟 新增：用于拉起浏览器和监听 Deep Link 重定向
   ,
-  KeyboardAvoidingView, // 🌟 新增：处理键盘遮挡的核心组件
-  Platform, // 🌟 新增：判断 iOS 还是 Android
+
+
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 
-// 1. 修复警告：使用最新的 SafeAreaView 替代 react-native 自带的
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-// 引入 3D 渲染核心库
 import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// --- 3D 车辆组件（完美比例，防跑偏居中）---
+// --- 3D 车辆组件 ---
 interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
 }
@@ -36,7 +34,6 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
 
   return (
     <group position={[0, -0.5, 0]}>
-      {/* Center 组件强制修正模型的物理中心，保证旋转时绝对在原地打转 */}
       <Center>
         <primitive 
           object={scene} 
@@ -63,52 +60,93 @@ export default function App() {
   const [accessToken, setAccessToken] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   
-  // 动态车辆名称状态
   const [vehicleName, setVehicleName] = useState('车辆连接中...');
   const [range, setRange] = useState('---');
   const [temp, setTemp] = useState('--');
   const [locationText, setLocationText] = useState('定位获取中...');
   const [modelLoaded, setModelLoaded] = useState(false);
 
+  // 🌟 1. 监听来自服务器端传回的 Deep Link
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      // 假设你的服务器处理完后，重定向到类似 dmittapp://callback?refresh_token=xxxxxxx
+      const url = event.url;
+      if (url && url.includes('refresh_token=')) {
+        const tokenMatch = url.match(/refresh_token=([^&]+)/);
+        if (tokenMatch && tokenMatch[1]) {
+          const newToken = tokenMatch[1];
+          setRefreshToken(newToken);
+          await AsyncStorage.setItem('teslaRefreshToken', newToken);
+          Alert.alert('登录成功', '正在获取车辆数据...');
+          fetchCarData(newToken);
+        }
+      }
+    };
+
+    // 注册监听器
+    const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
+    
+    // 处理冷启动时的 Deep Link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      linkingSubscription.remove();
+    };
+  }, []);
+
+  // 2. 初始化加载本地 Token
   useEffect(() => {
     const loadToken = async () => {
       const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
       if (savedToken) {
         setRefreshToken(savedToken);
-        // 如果有缓存的 Token，启动时自动尝试获取一次数据
         setTimeout(() => fetchCarData(savedToken), 500); 
       } else {
-        setVehicleName('请先配置 Token');
+        setVehicleName('请先登录特斯拉账号');
       }
     };
     loadToken();
   }, []);
 
-  const handleSaveAndRefresh = async () => {
-    if (!refreshToken.trim()) {
-      Alert.alert('提示', '请先输入 Refresh Token');
-      return;
+// 🌟 触发 OAuth 2.0 登录流程
+  const handleTeslaOAuthLogin = async () => {
+    // ✅ 这里填入你真实的 Client ID（前端只放 ID，绝对不放 Secret）
+    const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
+    
+    // ✅ 这里的回调地址必须和你在特斯拉后台配置的一字不差
+    const redirectUri = 'https://dmitt.com/callback';
+    
+    // ✅ 请求的权限范围（获取车辆数据和控制车辆所需）
+    const scope = 'openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds';
+    
+    // 随机生成一个 state 防止 CSRF 攻击
+    const state = Math.random().toString(36).substring(7);
+
+    // 拼接特斯拉官方授权 URL (中国区使用 auth.tesla.cn)
+    const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
+    
+    try {
+      // 拉起系统浏览器或内嵌 WebView
+      await Linking.openURL(authUrl);
+    } catch (error) {
+      Alert.alert('错误', '无法打开浏览器，请检查系统设置');
     }
-    // 🌟 保存成功后，主动收起键盘
-    Keyboard.dismiss();
-    await AsyncStorage.setItem('teslaRefreshToken', refreshToken);
-    Alert.alert('成功', 'Token 已保存！正在尝试连接车辆...');
-    fetchAccessToken(refreshToken);
   };
 
-  // 长按车名清除 Token 的隐藏功能
   const handleResetToken = () => {
-    Alert.alert('重置授权', '确定要清除当前 Token 重新配置吗？', [
+    Alert.alert('退出登录', '确定要退出当前账号并清除数据吗？', [
       { text: '取消', style: 'cancel' },
       { 
-        text: '清除', 
+        text: '退出', 
         style: 'destructive', 
         onPress: async () => {
           await AsyncStorage.removeItem('teslaRefreshToken');
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
-          setVehicleName('请先配置 Token');
+          setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
         }
@@ -125,7 +163,7 @@ export default function App() {
         body: JSON.stringify({
           grant_type: 'refresh_token',
           refresh_token: currentToken,
-          client_id: 'ownerapi'
+          client_id: 'ownerapi' // 根据需要可能需要换成你自己的 client_id
         })
       });
       const data = await res.json();
@@ -133,7 +171,8 @@ export default function App() {
         setAccessToken(data.access_token);
         return data.access_token;
       } else {
-        Alert.alert('错误', 'Token 已失效，请长按车名重置并重新输入');
+        Alert.alert('错误', 'Token 已失效，请重新登录');
+        handleResetToken();
         return null;
       }
     } catch (error) {
@@ -162,12 +201,7 @@ export default function App() {
       }
       
       setVehicleId(vehicle.id);
-      
-      if (vehicle.display_name) {
-        setVehicleName(vehicle.display_name);
-      } else {
-        setVehicleName('我的特斯拉');
-      }
+      setVehicleName(vehicle.display_name || '我的特斯拉');
 
       const dataRes = await fetch(`https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles/${vehicle.id}/vehicle_data`, {
         headers: { Authorization: `Bearer ${currentAccess}` }
@@ -180,7 +214,6 @@ export default function App() {
       
       if (chargeState?.battery_range) setRange(Math.round(chargeState.battery_range).toString());
       if (climateState?.inside_temp) setTemp(climateState.inside_temp.toFixed(1));
-      
       if (driveState) setLocationText('已更新最新位置');
 
     } catch (error) {
@@ -213,83 +246,36 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      
-      {/* 🌟 核心修复 1：使用 KeyboardAvoidingView 包裹全屏，智能响应键盘高度 */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-
-        {/* 顶部 3D 渲染区 */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.imageContainer}>
-          <Canvas 
-            style={styles.canvas}
-            camera={{ position: [0, 1.5, 7], fov: 40 }}
-          >
+          <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
             <color attach="background" args={['#000000']} />
             <ambientLight intensity={1.2} />
             <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
             <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
-            
             <Suspense fallback={null}>
               <Tesla3DModel setModelLoaded={setModelLoaded} />
             </Suspense>
-
-            <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              enableDamping={true}
-              dampingFactor={0.08}
-              rotateSpeed={1.2}
-              minPolarAngle={Math.PI / 2.2} 
-              maxPolarAngle={Math.PI / 2.2}
-            />
+            <OrbitControls enableZoom={false} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} minPolarAngle={Math.PI / 2.2} maxPolarAngle={Math.PI / 2.2} />
           </Canvas>
-
-          {!modelLoaded && (
-            <View style={styles.FallbackLoaderContainer}>
-              <FallbackLoader />
-            </View>
-          )}
-
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>已驻车</Text>
-          </View>
+          {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
+          <View style={styles.statusBadge}><Text style={styles.statusText}>已驻车</Text></View>
         </View>
 
-        {/* 🌟 核心修复 2：将底面板替换为智能 ScrollView
-            - bounces={false} 禁用弹性，平时绝对滑不动
-            - contentContainerStyle 控制内容排版
-            - keyboardShouldPersistTaps="handled" 保证点其他地方能顺畅收起键盘 
-        */}
-        <ScrollView 
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.contentContainer}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          
-          {/* 头部信息区 */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            <TouchableOpacity 
-              activeOpacity={0.6} 
-              onPress={() => fetchCarData()} 
-              onLongPress={handleResetToken}
-            >
+            <TouchableOpacity activeOpacity={0.6} onPress={() => fetchCarData()} onLongPress={handleResetToken}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.title}>{vehicleName}</Text>
                 {vehicleId ? <Text style={styles.refreshIcon}> 🔄</Text> : null}
               </View>
             </TouchableOpacity>
-
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.rangeText}>{range} km</Text>
               <Text style={styles.subText}>剩余续航</Text>
             </View>
           </View>
 
-          {/* 温度与位置区 */}
           <View style={styles.infoGrid}>
             <View style={styles.infoCol}>
               <Text style={styles.tempText}>{temp}°C</Text>
@@ -301,7 +287,6 @@ export default function App() {
             </View>
           </View>
 
-          {/* 控制按钮区 */}
           <View style={styles.controls}>
             <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('door_lock')}>
               <Text style={styles.buttonText}>🔒 锁车</Text>
@@ -317,26 +302,15 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Token 输入区 */}
+          {/* 🌟 替换掉之前的输入框，改为优雅的授权登录按钮 */}
           {!refreshToken && (
             <View style={styles.tokenSection}>
-              <TextInput
-                style={styles.input}
-                placeholder="初次使用，请粘贴 Refresh Token"
-                placeholderTextColor="#888"
-                value={refreshToken}
-                onChangeText={setRefreshToken}
-                secureTextEntry={true}
-                // 🌟 新增：用户在键盘点“完成/回车”时，也能自动收起键盘并保存
-                returnKeyType="done"
-                onSubmitEditing={handleSaveAndRefresh}
-              />
-              <TouchableOpacity style={styles.buttonWhite} onPress={handleSaveAndRefresh}>
-                <Text style={styles.buttonTextDark}>💾 验证并连接车辆</Text>
+              <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
+              <TouchableOpacity style={styles.buttonWhite} onPress={handleTeslaOAuthLogin}>
+                <Text style={styles.buttonTextDark}>🛡️ 登录特斯拉账号</Text>
               </TouchableOpacity>
             </View>
           )}
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -351,11 +325,7 @@ const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
-  
-  // 🌟 核心修复 3：将原本 view 的样式迁移到 ScrollView 的 contentContainer 里面
-  // flexGrow: 1 会让内容自动撑满屏幕，平时没有滚动条，绝对滑不动。
   contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
-  
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   refreshIcon: { fontSize: 14, opacity: 0.6 },
@@ -368,10 +338,9 @@ const styles = StyleSheet.create({
   controls: { gap: 10 },
   buttonDark: { backgroundColor: '#1C1C1E', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonWhite: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  buttonWhite: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 10 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   buttonTextDark: { color: '#000', fontSize: 16, fontWeight: '600' },
-  
-  tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16 },
-  input: { backgroundColor: '#1C1C1E', color: '#fff', padding: 14, borderRadius: 14, fontSize: 14, marginBottom: 10 },
+  tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
+  authDesc: { color: '#888', fontSize: 13, marginBottom: 5 },
 });
