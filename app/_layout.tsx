@@ -45,13 +45,14 @@ function HeadlightAndBeam() {
       <primitive
         object={new THREE.Mesh(
           new THREE.ConeGeometry(0.15, 6, 32), 
-          new THREE.MeshEmissiveMaterial({   
+          // 👇 就是这里！改用真实存在的 MeshStandardMaterial
+          new THREE.MeshStandardMaterial({   
             color: '#ffffff',
-            emissive: '#ffffff',
-            emissiveIntensity: 10, 
+            emissive: '#ffffff',   // 开启自发光属性
+            emissiveIntensity: 10, // 发光强度
             transparent: true,     
             opacity: 0.4,          
-            depthWrite: false // 避免光束遮挡车身产生奇怪的锯齿
+            depthWrite: false      // 避免光束遮挡车身产生奇怪的锯齿
           })
         )}
         // 调整位置和旋转，让光锥底部朝前射出
