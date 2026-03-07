@@ -16,28 +16,60 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 引入 3D 渲染核心库
 import { Canvas } from '@react-three/fiber/native';
-// 移除了 Environment，避免因为从 GitHub 下载环境贴图导致的网络卡死
+// 移除了 Environment，避免网络请求
 import { OrbitControls, useGLTF } from '@react-three/drei/native';
+// 🌟 引入 three.js 用于在代码中手动创建光束几何体
+import * as THREE from 'three';
 
-// --- 3D 车辆组件（已精确调整为你要的侧面效果）---
-interface Tesla3DModelProps {
-  setModelLoaded: (loaded: boolean) => void;
-}
-
-function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
+// --- 3D 车辆组件（更新为侧视图，并添加体积光束）---
+function Tesla3DModel() {
+  // 使用加速后的专属网络直链
   const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
 
-  useEffect(() => {
-    setModelLoaded(true);
-  }, [setModelLoaded]);
-
+  // 🌟 精确调整为侧面视角（车头朝左）
   return (
     <primitive 
       object={scene} 
-      scale={1.65}                    // 更大，更有冲击力
-      position={[0, -1.05, 0]}       // 完全居中
-      rotation={[0.05, Math.PI * 1.05, 0]} // 精确侧面视角（车头朝左）
+      scale={1.65}                    // + 更大，更有冲击力
+      position={[0, -1.05, 0]}       // + 完全居中
+      rotation={[0.05, Math.PI * 1.05, 0]} // + 精确侧面视角，车头朝左
     />
+  );
+}
+
+// 🌟 新增：大灯和体积光束组件
+function HeadlightAndBeam() {
+  return (
+    <group>
+      {/* 🌟 核心：手动创建一个发光的圆锥体来模拟体积光束 */}
+      <primitive
+        object={new THREE.Mesh(
+          new THREE.ConeGeometry(0.12, 5, 32), // 圆锥体：底径0.12，高5
+          new THREE.MeshEmissiveMaterial({   // 使用发光材质
+            color: 'white',
+            emissive: 'white',
+            emissiveIntensity: 20, // 足够高以产生光感
+            transparent: true,     // 透明
+            opacity: 0.6,          // 调整不透明度，让光束更柔和
+          })
+        )}
+        // 🌟 将光束放置在侧视图中清晰可见的左大灯位置
+        position={[1.5, 0.2, 0]} // 根据模型估算大灯坐标
+        rotation={[Math.PI / 2, 0, 0]} // 垂直向前射出
+      />
+      
+      {/* 🌟 添加一个点光源（SpotLight），不仅有光束，还要照亮场景 */}
+      <SpotLight
+        position={[1.5, 0.2, 0]} // 与光束位置一致
+        target={new THREE.Object3D().set(new THREE.Vector3(10, 0, 0))} // 向前瞄准
+        distance={10}
+        intensity={10} // 足够强
+        color="white"
+        angle={Math.PI / 4}
+        penumbra={0.5}
+        castShadow
+      />
+    </group>
   );
 }
 
@@ -59,7 +91,6 @@ export default function App() {
   const [range, setRange] = useState('---');
   const [temp, setTemp] = useState('16');
   const [locationText, setLocationText] = useState('上海 · 230米');
-  const [modelLoaded, setModelLoaded] = useState(false);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -160,46 +191,46 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      
-      {/* 🌟 升级点：3D 渲染区已经移出 ScrollView，彻底解决手势冲突 */}
-      <View style={styles.imageContainer}>
-        <Canvas 
-          style={styles.canvas}
-          camera={{ position: [3.5, 2.8, 7.2], fov: 40 }}
-        >
-          <ambientLight intensity={1.2} />
-          <directionalLight position={[10, 10, 5]} intensity={2} color="white" />
-          <directionalLight position={[-10, 5, -5]} intensity={1.5} color="white" />
-          
-          <Suspense fallback={null}>
-            <Tesla3DModel setModelLoaded={setModelLoaded} />
-          </Suspense>
-
-          <OrbitControls
-            enableZoom={false}
-            enablePan={false}
-            enableDamping={true}
-            dampingFactor={0.08}
-            rotateSpeed={1.8}
-            minPolarAngle={Math.PI * 0.35}
-            maxPolarAngle={Math.PI * 0.95}
-          />
-        </Canvas>
-
-        {/* 加载动画 */}
-        {!modelLoaded && (
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* 顶部 3D 渲染区 */}
+        <View style={styles.imageContainer}>
+          {/* 加入一个兜底的加载动画覆盖在底层 */}
           <View style={StyleSheet.absoluteFill}>
             <FallbackLoader />
           </View>
-        )}
 
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>已驻车</Text>
+          {/* 🌟 给 Canvas 添加 style 属性（图示修改点 2） */}
+          <Canvas 
+            style={styles.canvas} // + 这里加上
+            // 🌟 重新调整相机位置以精确配合侧视图
+            camera={{ position: [3.5, 2.8, 7.2], fov: 40 }} 
+          >
+            {/* 🌟 为了突出大灯和光束，降低整体环境光亮度 */}
+            <ambientLight intensity={0.5} /> // ← 降低环境光
+            <directionalLight position={[10, 10, 5]} intensity={1} color="white" /> // ← 降低辅助灯
+            <directionalLight position={[-10, 5, -5]} intensity={0.5} color="white" /> // ← 降低辅助灯
+
+            <Suspense fallback={null}>
+              <Tesla3DModel />
+              {/* 🌟 核心：模型加载后，开启大灯和体积光束 */}
+              <HeadlightAndBeam /> 
+            </Suspense>
+
+            <OrbitControls 
+              enableZoom={false} 
+              enablePan={false}
+              minPolarAngle={Math.PI / 2.5} 
+              maxPolarAngle={Math.PI / 2.5}
+            />
+          </Canvas>
+
+          <View style={styles.statusBadge}>
+            {/* 🌟 更新状态栏文本以匹配图二（可选） */}
+            <Text style={styles.statusText}>00:40 已驻车</Text>
+          </View>
         </View>
-      </View>
 
-      {/* 🌟 底部的内容控制面板被 ScrollView 独立包裹，互不干扰 */}
-      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* 🌟 界面文字和布局在后视图区域不变，保持清晰明了 */}
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>小攀的购物车</Text>
@@ -253,16 +284,20 @@ export default function App() {
           </View>
         </View>
       </ScrollView>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  imageContainer: { height: 250, backgroundColor: '#000', position: 'relative' },
-  canvas: { ...StyleSheet.absoluteFillObject },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  imageContainer: { height: 250, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  
+  // 🌟 新增 canvas 样式，强制它完全覆盖容器（图示修改点 1）
+  canvas: {
+    ...StyleSheet.absoluteFillObject, // + 关键！让 Canvas 完全覆盖容器
+  },
+  
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, // 加载动画的居中样式
   statusBadge: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
   content: { padding: 24 },
