@@ -17,28 +17,29 @@ import { Canvas } from '@react-three/fiber/native';
 // 移除了 Environment，避免因为从 GitHub 下载环境贴图导致的网络卡死
 import { OrbitControls, useGLTF } from '@react-three/drei/native';
 
-// --- 3D 车辆组件（已优化：加载完成后通知父组件隐藏加载动画）---
-// 新增 TypeScript 类型（解决 “绑定元素 setModelLoaded 隐式具有 any 类型” 报错）
+// --- 3D 车辆组件（已优化位置 + 朝向）---
 interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
 }
 
 function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
-  // 直接使用加速后的专属网络直链，彻底告别本地加载卡死问题
   const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
 
-  // 模型真正加载完成（useGLTF 内部已解析）后通知父组件
   useEffect(() => {
     setModelLoaded(true);
   }, [setModelLoaded]);
 
-  // 赛博皮卡的尺寸可能和 Model Y 不太一样。
-  // 如果出来后发现车太大、太小，你可以修改 scale (缩放比例，例如改成 1.0 或 2.0)
-  // 如果车子太靠上或靠下，可以修改 position (Y轴高度，例如 [-1, -1.5, 0])
-  return <primitive object={scene} scale={1.5} position={[0, -1, 0]} />;
+  return (
+    <primitive 
+      object={scene} 
+      scale={1.5} 
+      position={[-0.8, -1.2, 0]}     // ← 向左平移，解决“靠右”问题
+      rotation={[0, Math.PI * 0.05, 0]} // ← 轻微调整车头朝向，更正
+    />
+  );
 }
 
-// 占位加载动画（当模型还没解析完时显示）
+// 占位加载动画
 function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
@@ -56,8 +57,6 @@ export default function App() {
   const [range, setRange] = useState('---');
   const [temp, setTemp] = useState('16');
   const [locationText, setLocationText] = useState('上海 · 230米');
-  
-  // 新增：模型加载状态（解决“模型解析中”一直显示的问题）
   const [modelLoaded, setModelLoaded] = useState(false);
 
   useEffect(() => {
@@ -161,12 +160,10 @@ export default function App() {
         {/* 顶部 3D 渲染区 */}
         <View style={styles.imageContainer}>
           
-          {/* Canvas 必须放在最底层 + 绝对填充 */}
           <Canvas 
             style={styles.canvas}
-            camera={{ position: [6, 3, 6], fov: 45 }}
+            camera={{ position: [5, 2.8, 7.5], fov: 42 }}   // ← 相机优化，更好看
           >
-            {/* 2. 替换为本地物理灯光，避免网络请求 */}
             <ambientLight intensity={1.2} />
             <directionalLight position={[10, 10, 5]} intensity={2} color="white" />
             <directionalLight position={[-10, 5, -5]} intensity={1.5} color="white" />
@@ -177,12 +174,15 @@ export default function App() {
             <OrbitControls
               enableZoom={false}
               enablePan={false}
-              minPolarAngle={Math.PI / 2.5}
-              maxPolarAngle={Math.PI / 2.5}
+              enableDamping={true}           // ← 手指松开后自然惯性滑动
+              dampingFactor={0.08}
+              rotateSpeed={1.8}              // ← 滑动灵敏度大幅提升
+              minPolarAngle={Math.PI * 0.35}
+              maxPolarAngle={Math.PI * 0.95}
             />
           </Canvas>
 
-          {/* 只有模型还没加载完时才显示加载动画（关键修复！） */}
+          {/* 加载动画 */}
           {!modelLoaded && (
             <View style={StyleSheet.absoluteFill}>
               <FallbackLoader />
@@ -250,13 +250,8 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  imageContainer: { height: 250, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', position: 'relative' },
-  
-  // 新增：让 Canvas 完全填满容器（核心修复！）
-  canvas: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  
+  imageContainer: { height: 250, backgroundColor: '#000', position: 'relative' },
+  canvas: { ...StyleSheet.absoluteFillObject },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   statusBadge: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
