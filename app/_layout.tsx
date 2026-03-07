@@ -36,8 +36,8 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
       <Center>
         <primitive 
           object={scene} 
-          scale={1.4}                     
-          rotation={[0, Math.PI / 1.2, 0]} 
+          scale={1.65}                     
+          rotation={[0, -Math.PI / 2.5, 0]} 
         />
       </Center>
     </group>
