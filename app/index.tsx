@@ -19,8 +19,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ChargingMap from './ChargingMap';
-import SettingsMenu from './SettingsMenu';
+import SettingsMenu from './SettingsMenu'; // 👈 已经删除了容易闪退的 ChargingMap 引入
 
 interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
@@ -60,7 +59,6 @@ export default function Layout() {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
-  const [mapVisible, setMapVisible] = useState(false);
 
   const fetchAccessToken = async (currentToken = refreshToken) => {
     if (!currentToken) return null;
@@ -94,7 +92,6 @@ export default function Layout() {
     }
   };
 
-  // 👇 修复 2：加上了 401 自动续期的逻辑
   const fetchCarData = async (tokenToUse = refreshToken, isRetry = false) => {
     let currentAccess = accessToken;
     if (!currentAccess) {
@@ -107,7 +104,6 @@ export default function Layout() {
         headers: { Authorization: `Bearer ${currentAccess}` }
       });
 
-      // 遇到 401 无感刷新
       if (vRes.status === 401 && !isRetry) {
         console.log('Token 过期，无感刷新中...');
         const newAccess = await fetchAccessToken(refreshToken);
@@ -156,11 +152,11 @@ export default function Layout() {
           const newToken = tokenMatch[1];
           setRefreshToken(newToken);
           
-          // 👇 修复 1：当拦截到 Token 登录成功后，在这里自动把设置面板关掉
           setMenuVisible(false);
 
           await AsyncStorage.setItem('teslaRefreshToken', newToken);
-          //Alert.alert('登录成功', '正在获取车辆数据...');
+          
+          // 👇 彻底删除了烦人的“登录成功”弹窗，实现全官方无感登录体验
           fetchCarData(newToken);
         }
       }
@@ -219,7 +215,6 @@ export default function Layout() {
     ]);
   };
 
-  // 👇 修复 2：加上发指令遇到 401 自动重试的逻辑
   const sendCommand = async (endpoint: string, body: Record<string, any> = {}, isRetry = false) => {
     if (!vehicleId || !accessToken) {
       Alert.alert('提示', '车辆尚未连接，请稍后再试');
@@ -325,23 +320,17 @@ export default function Layout() {
           refreshToken={refreshToken}
           accessToken={accessToken}
           vehicleId={vehicleId}
-          // 👇 修复 1：去掉会卡死的 setTimeout，直接弹起浏览器。
           onLogin={() => { 
             handleTeslaOAuthLogin();
           }}
           onLogout={handleResetToken}
+          // 👇 直接调用特斯拉官方超充地图网页，告别原生底层的闪退问题！
           onOpenMap={() => {
-            setMenuVisible(false);
-            setTimeout(() => setMapVisible(true), 300);
+            WebBrowser.openBrowserAsync('https://www.tesla.cn/findus?filters=supercharger');
           }}
         />
 
-        <ChargingMap 
-          visible={mapVisible} 
-          onClose={() => setMapVisible(false)} 
-          accessToken={accessToken} 
-          vehicleId={vehicleId} 
-        />
+        {/* 👇 已经彻底删除了 <ChargingMap /> 标签 */}
       </SafeAreaView>
     </View>
   );
