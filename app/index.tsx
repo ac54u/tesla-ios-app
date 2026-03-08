@@ -305,7 +305,13 @@ export default function Layout() {
           refreshToken={refreshToken}
           accessToken={accessToken}
           vehicleId={vehicleId}
-          onLogin={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}
+          // 👇 就是改这一行，加一个 500 毫秒的延迟
+          onLogin={() => { 
+            setMenuVisible(false); 
+            setTimeout(() => {
+              handleTeslaOAuthLogin();
+            }, 500);
+          }}
           onLogout={handleResetToken}
           onOpenMap={() => {
             setMenuVisible(false);
