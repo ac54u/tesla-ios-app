@@ -45,6 +45,7 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
   );
 }
 
+// 占位加载动画
 function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
@@ -70,6 +71,7 @@ export default function App() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
+  // 1. 监听来自服务器端传回的 Deep Link
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
@@ -96,6 +98,7 @@ export default function App() {
     };
   }, []);
 
+  // 2. 初始化加载本地 Token
   useEffect(() => {
     const loadToken = async () => {
       const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
@@ -109,10 +112,11 @@ export default function App() {
     loadToken();
   }, []);
 
+  // 触发 OAuth 2.0 登录流程
   const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
-    // 🌟 修改点：新增了 profile 和 email 权限，用于获取个人信息
+    // 包含了 profile 和 email 权限
     const scope = 'openid offline_access profile email vehicle_device_data vehicle_cmds vehicle_charging_cmds';
     const state = Math.random().toString(36).substring(7);
 
@@ -136,8 +140,8 @@ export default function App() {
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
-          setUserInfo(null); // 清除个人信息
-          setMenuVisible(false); // 关闭菜单
+          setUserInfo(null); 
+          setMenuVisible(false); 
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
@@ -163,7 +167,6 @@ export default function App() {
         setAccessToken(data.access_token);
         return data.access_token;
       } else {
-        Alert.alert('错误', 'Token 已失效，请重新登录');
         handleResetToken();
         return null;
       }
@@ -173,29 +176,54 @@ export default function App() {
     }
   };
 
-  // 🌟 新增：获取用户个人信息
+  // 🌟 强力容错版用户信息获取
   const fetchUserInfo = async () => {
-    if (!accessToken) return;
     setLoadingUser(true);
     try {
+      let currentAccess = accessToken;
+      if (!currentAccess && refreshToken) {
+        currentAccess = await fetchAccessToken(refreshToken);
+      }
+      
+      if (!currentAccess) {
+        setUserInfo({ full_name: '连接异常', email: '无法获取有效的授权凭证' });
+        setLoadingUser(false);
+        return;
+      }
+
       const res = await fetch('https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/users/me', {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${currentAccess}` }
       });
       const data = await res.json();
-      if (data.response) {
-        setUserInfo(data.response);
+      
+      if (res.ok && data.response) {
+        setUserInfo({
+          full_name: data.response.full_name || 'Tesla 车主',
+          email: data.response.email || '未绑定邮箱',
+          profile_image_url: data.response.profile_image_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+        });
+      } else {
+        // 如果特斯拉 API 拒绝，把报错信息直接写在邮箱的位置！
+        setUserInfo({ 
+          full_name: '数据获取受限', 
+          email: data.error || data.error_description || '当前账号/API不支持获取资料',
+          profile_image_url: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+        });
       }
     } catch (error) {
-      console.error('获取用户信息失败:', error);
+      setUserInfo({ 
+        full_name: '网络请求失败', 
+        email: String(error),
+        profile_image_url: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+      });
     } finally {
       setLoadingUser(false);
     }
   };
 
-  // 🌟 修改：打开菜单时拉取最新数据
   const openMenu = () => {
     setMenuVisible(true);
-    if (accessToken && !userInfo) {
+    if (!userInfo || userInfo.full_name === '数据获取受限') {
       fetchUserInfo();
     }
   };
@@ -286,7 +314,6 @@ export default function App() {
             <Text style={styles.statusText}>已驻车</Text>
           </View>
 
-          {/* 右上角菜单按钮 */}
           <TouchableOpacity 
             style={styles.menuIconContainer} 
             onPress={openMenu}
@@ -297,7 +324,6 @@ export default function App() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            {/* 之前这里绑定的长按退出（onLongPress）我们去掉了，因为现在菜单里有正式的退出按钮了 */}
             <TouchableOpacity 
               activeOpacity={0.6} 
               onPress={() => refreshToken ? fetchCarData() : undefined} 
@@ -361,7 +387,6 @@ export default function App() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             
-            {/* 头部：关闭按钮 */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>账号与设置</Text>
               <TouchableOpacity onPress={() => setMenuVisible(false)} style={styles.closeButton}>
@@ -369,11 +394,8 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {/* 内容区 */}
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              
               {!refreshToken ? (
-                // 未登录状态
                 <View style={styles.unauthView}>
                   <Ionicons name="person-circle-outline" size={80} color="#444" />
                   <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
@@ -382,9 +404,7 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                // 已登录状态
                 <View>
-                  {/* 个人资料卡片 */}
                   <View style={styles.profileCard}>
                     {loadingUser ? (
                       <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 20 }} />
@@ -395,12 +415,11 @@ export default function App() {
                           style={styles.avatar} 
                         />
                         <Text style={styles.userName}>{userInfo?.full_name || 'Tesla 车主'}</Text>
-                        <Text style={styles.userEmail}>{userInfo?.email || '获取邮箱中...'}</Text>
+                        <Text style={styles.userEmail}>{userInfo?.email || '未知邮箱'}</Text>
                       </>
                     )}
                   </View>
 
-                  {/* 设置列表区 */}
                   <View style={styles.settingsList}>
                     <View style={styles.settingItem}>
                       <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
@@ -430,7 +449,6 @@ export default function App() {
                     </View>
                   </View>
                   
-                  {/* 退出登录按钮 */}
                   <TouchableOpacity style={styles.logoutButton} onPress={handleResetToken}>
                     <Text style={styles.logoutButtonText}>退出登录</Text>
                   </TouchableOpacity>
@@ -447,146 +465,256 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  // ... 之前的样式全部保留 ...
-  container: { flex: 1, backgroundColor: '#000' },
-  imageContainer: { height: 260, backgroundColor: '#000', position: 'relative' },
-  canvas: { ...StyleSheet.absoluteFillObject },
-  FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
-  statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
-  menuIconContainer: { position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 8 },
-  contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  refreshIcon: { fontSize: 14, opacity: 0.6 },
-  rangeText: { fontSize: 22, fontFamily: 'Courier', color: '#fff' },
-  subText: { fontSize: 12, color: '#888', marginTop: 4 },
-  infoGrid: { flexDirection: 'row' },
-  infoCol: { flex: 1, alignItems: 'center' },
-  tempText: { fontSize: 32, fontFamily: 'Courier', color: '#fff' },
-  locationText: { fontSize: 16, color: '#fff', paddingBottom: 6 },
-  controls: { gap: 10 },
-  buttonDark: { backgroundColor: '#1C1C1E', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  buttonAuthRed: { backgroundColor: '#E31937', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
-  buttonTextWhiteLarge: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
-  tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
-  authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000' 
+  },
+  imageContainer: { 
+    height: 260, 
+    backgroundColor: '#000', 
+    position: 'relative' 
+  },
+  canvas: { 
+    ...StyleSheet.absoluteFillObject 
+  },
+  FallbackLoaderContainer: { 
+    ...StyleSheet.absoluteFillObject, 
+    zIndex: -1 
+  }, 
+  loaderContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  }, 
+  statusBadge: { 
+    position: 'absolute', 
+    top: 16, 
+    left: 20, 
+    backgroundColor: 'rgba(0,0,0,0.7)', 
+    paddingHorizontal: 16, 
+    paddingVertical: 6, 
+    borderRadius: 20, 
+    zIndex: 10 
+  },
+  statusText: { 
+    color: '#fff', 
+    fontSize: 14, 
+    fontWeight: '500' 
+  },
+  menuIconContainer: { 
+    position: 'absolute', 
+    top: 12, 
+    right: 16, 
+    zIndex: 10, 
+    padding: 8 
+  },
+  contentContainer: { 
+    flexGrow: 1, 
+    paddingHorizontal: 24, 
+    paddingVertical: 16, 
+    justifyContent: 'space-between' 
+  },
+  headerRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#fff' 
+  },
+  refreshIcon: { 
+    fontSize: 14, 
+    opacity: 0.6 
+  },
+  rangeText: { 
+    fontSize: 22, 
+    fontFamily: 'Courier', 
+    color: '#fff' 
+  },
+  subText: { 
+    fontSize: 12, 
+    color: '#888', 
+    marginTop: 4 
+  },
+  infoGrid: { 
+    flexDirection: 'row' 
+  },
+  infoCol: { 
+    flex: 1, 
+    alignItems: 'center' 
+  },
+  tempText: { 
+    fontSize: 32, 
+    fontFamily: 'Courier', 
+    color: '#fff' 
+  },
+  locationText: { 
+    fontSize: 16, 
+    color: '#fff', 
+    paddingBottom: 6 
+  },
+  controls: { 
+    gap: 10 
+  },
+  buttonDark: { 
+    backgroundColor: '#1C1C1E', 
+    paddingVertical: 14, 
+    borderRadius: 14, 
+    alignItems: 'center' 
+  },
+  buttonGreen: { 
+    backgroundColor: '#10B981', 
+    paddingVertical: 14, 
+    borderRadius: 14, 
+    alignItems: 'center' 
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '500' 
+  },
+  buttonAuthRed: { 
+    backgroundColor: '#E31937', 
+    paddingVertical: 16, 
+    width: '100%', 
+    borderRadius: 50, 
+    alignItems: 'center', 
+    marginTop: 10 
+  },
+  buttonTextWhiteLarge: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: '700', 
+    letterSpacing: 1 
+  },
+  tokenSection: { 
+    borderTopWidth: 1, 
+    borderTopColor: '#2C2C2E', 
+    paddingTop: 16, 
+    alignItems: 'center' 
+  },
+  authDesc: { 
+    color: '#888', 
+    fontSize: 13, 
+    marginBottom: 12 
+  },
 
-  // 🌟 新增的 Modal (个人中心) 样式
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // 半透明黑色遮罩
+  // Modal (个人中心) 样式
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    backgroundColor: 'rgba(0, 0, 0, 0.6)' 
   },
-  modalContent: {
-    backgroundColor: '#111', // 深灰色背景，区分纯黑底色
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '85%', // 抽屉占据屏幕 85% 高度
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
+  modalContent: { 
+    backgroundColor: '#111', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    height: '85%', 
+    paddingHorizontal: 20, 
+    paddingTop: 10, 
+    paddingBottom: 40 
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
-    marginBottom: 10,
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#222', 
+    marginBottom: 10 
   },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+  modalTitle: { 
+    color: '#fff', 
+    fontSize: 20, 
+    fontWeight: 'bold' 
   },
-  closeButton: {
-    padding: 4,
+  closeButton: { 
+    padding: 4 
   },
-  modalBody: {
-    flex: 1,
+  modalBody: { 
+    flex: 1 
   },
-  unauthView: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
+  unauthView: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 60 
   },
-  unauthText: {
-    color: '#888',
-    fontSize: 16,
-    marginTop: 15,
-    marginBottom: 30,
+  unauthText: { 
+    color: '#888', 
+    fontSize: 16, 
+    marginTop: 15, 
+    marginBottom: 30 
   },
-  profileCard: {
-    alignItems: 'center',
-    backgroundColor: '#1C1C1E',
-    borderRadius: 20,
-    paddingVertical: 30,
-    marginBottom: 20,
+  profileCard: { 
+    alignItems: 'center', 
+    backgroundColor: '#1C1C1E', 
+    borderRadius: 20, 
+    paddingVertical: 30, 
+    marginBottom: 20 
   },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: '#333',
+  avatar: { 
+    width: 90, 
+    height: 90, 
+    borderRadius: 45, 
+    marginBottom: 15, 
+    borderWidth: 2, 
+    borderColor: '#333' 
   },
-  userName: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 5,
+  userName: { 
+    color: '#fff', 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    marginBottom: 5 
   },
-  userEmail: {
-    color: '#888',
-    fontSize: 14,
+  userEmail: { 
+    color: '#888', 
+    fontSize: 14, 
+    textAlign: 'center', 
+    paddingHorizontal: 10 
   },
-  settingsList: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    marginBottom: 30,
+  settingsList: { 
+    backgroundColor: '#1C1C1E', 
+    borderRadius: 16, 
+    marginBottom: 30 
   },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+  settingItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 18, 
+    paddingHorizontal: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#2C2C2E' 
   },
-  settingIcon: {
-    marginRight: 15,
+  settingIcon: { 
+    marginRight: 15 
   },
-  settingTextContainer: {
-    flex: 1,
+  settingTextContainer: { 
+    flex: 1 
   },
-  settingTextPrimary: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 3,
+  settingTextPrimary: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '500', 
+    marginBottom: 3 
   },
-  settingTextSecondary: {
-    color: '#888',
-    fontSize: 12,
+  settingTextSecondary: { 
+    color: '#888', 
+    fontSize: 12 
   },
-  logoutButton: {
-    backgroundColor: 'rgba(227, 25, 55, 0.1)', // 红色半透明背景
-    borderWidth: 1,
-    borderColor: '#E31937',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginBottom: 20,
+  logoutButton: { 
+    backgroundColor: 'rgba(227, 25, 55, 0.1)', 
+    borderWidth: 1, 
+    borderColor: '#E31937', 
+    paddingVertical: 16, 
+    borderRadius: 14, 
+    alignItems: 'center', 
+    marginBottom: 20 
   },
-  logoutButtonText: {
-    color: '#E31937',
-    fontSize: 16,
-    fontWeight: '600',
+  logoutButtonText: { 
+    color: '#E31937', 
+    fontSize: 16, 
+    fontWeight: '600' 
   },
 });
