@@ -45,26 +45,25 @@ export default function SettingsMenu({
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
   
-  // 👇 动画控制状态
   const [showModal, setShowModal] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current; // 初始位置在屏幕最右侧(隐藏)
+  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
-  // 侧滑动画逻辑
+  // 侧滑全屏动画
   useEffect(() => {
     if (visible) {
       setShowModal(true);
       Animated.timing(slideAnim, {
-        toValue: 0, // 滑动到屏幕内
+        toValue: 0, // 滑动到屏幕 0 坐标（完全盖住屏幕）
         duration: 300,
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(slideAnim, {
-        toValue: SCREEN_WIDTH, // 滑出屏幕右侧
+        toValue: SCREEN_WIDTH, // 退回屏幕右侧外部
         duration: 250,
         useNativeDriver: true,
       }).start(() => {
-        setShowModal(false); // 动画结束后再彻底卸载 Modal
+        setShowModal(false);
       });
     }
   }, [visible]);
@@ -100,137 +99,126 @@ export default function SettingsMenu({
     <Modal
       transparent
       visible={showModal}
-      animationType="none" // 关掉系统默认的自下而上动画，使用我们自定义的侧滑
+      animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        {/* 点击左侧黑色半透明区域可以关闭菜单 */}
-        <TouchableOpacity style={styles.closeBackground} activeOpacity={1} onPress={onClose} />
-        
-        {/* 👇 核心侧滑面板 */}
-        <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
-          <SafeAreaView style={{ flex: 1 }}>
-            
-            {/* 顶部关闭按钮 */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            </View>
+      {/* 👇 直接使用 100% 宽度的深黑底色，彻底治愈强迫症 */}
+      <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
+        <SafeAreaView style={{ flex: 1 }}>
+          
+          {/* 👇 官方风格的顶部导航栏 */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={28} color="#fff" />
+              <Text style={styles.headerTitle}>菜单</Text>
+            </TouchableOpacity>
+          </View>
 
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl refreshing={loadingUser} onRefresh={refreshUser} tintColor="#fff" />
-              }
-            >
-              {!refreshToken ? (
-                // 没登录的状态
-                <View style={styles.unauthView}>
-                  <Ionicons name="person-circle-outline" size={80} color="#444" />
-                  <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
-                  <TouchableOpacity style={styles.buttonAuthRed} onPress={onLogin}>
-                    <Text style={styles.buttonTextWhiteLarge}>去登录</Text>
+          <ScrollView
+            style={styles.modalBody}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={loadingUser} onRefresh={refreshUser} tintColor="#fff" />
+            }
+          >
+            {!refreshToken ? (
+              <View style={styles.unauthView}>
+                <Ionicons name="person-circle-outline" size={80} color="#444" />
+                <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
+                <TouchableOpacity style={styles.buttonAuthRed} onPress={onLogin}>
+                  <Text style={styles.buttonTextWhiteLarge}>去登录</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <View style={styles.profileSection}>
+                  {loadingUser && !userInfo ? (
+                    <ActivityIndicator size="small" color="#fff" style={{ alignSelf: 'flex-start', margin: 20 }} />
+                  ) : (
+                    <>
+                      <Image
+                        source={{
+                          uri: userInfo?.profile_image_url && userInfo.profile_image_url.includes('tesla.cn')
+                            ? userInfo.profile_image_url
+                            : 'https://www.gravatar.com/avatar/0?d=mp',
+                          headers: {
+                            'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
+                            'Accept': '*/*'
+                          }
+                        }}
+                        style={styles.avatar}
+                      />
+                      <Text style={styles.userName}>
+                        {userInfo?.full_name || 'Tesla 车主'}
+                      </Text>
+                      <Text style={styles.userEmail}>
+                        {userInfo?.email || '未知邮箱'}
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.settingsList}>
+                  <TouchableOpacity style={styles.settingItem}>
+                    <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
+                    <View style={styles.settingTextContainer}>
+                      <Text style={styles.settingTextPrimary}>引荐奖励</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.settingItem} onPress={onOpenMap}>
+                    <Ionicons name="location-outline" size={22} color="#10B981" style={styles.settingIcon} />
+                    <View style={styles.settingTextContainer}>
+                      <Text style={styles.settingTextPrimary}>附近超级充电站</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.settingItem}>
+                    <Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} />
+                    <View style={styles.settingTextContainer}>
+                      <Text style={styles.settingTextPrimary}>隐私与安全</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#666" />
                   </TouchableOpacity>
                 </View>
-              ) : (
-                // 已登录的状态
-                <View>
-                  {/* 👇 全新排版：靠左对齐，复刻官方 UI */}
-                  <View style={styles.profileSection}>
-                    {loadingUser && !userInfo ? (
-                      <ActivityIndicator size="small" color="#fff" style={{ alignSelf: 'flex-start', margin: 20 }} />
-                    ) : (
-                      <>
-                        <Image
-                          source={{
-                            uri: userInfo?.profile_image_url && userInfo.profile_image_url.includes('tesla.cn')
-                              ? userInfo.profile_image_url
-                              : 'https://www.gravatar.com/avatar/0?d=mp',
-                            headers: {
-                              'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
-                              'Accept': '*/*'
-                            }
-                          }}
-                          style={styles.avatar}
-                        />
-                        <Text style={styles.userName}>
-                          {userInfo?.full_name || 'Tesla 车主'}
-                        </Text>
-                        <Text style={styles.userEmail}>
-                          {userInfo?.email || '未知邮箱'}
-                        </Text>
-                      </>
-                    )}
-                  </View>
 
-                  <View style={styles.settingsList}>
-                    <TouchableOpacity style={styles.settingItem}>
-                      <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingTextPrimary}>引荐奖励</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="#666" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.settingItem} onPress={() => { if (vehicleId) onOpenMap(); else Alert.alert('提示', '请等待数据加载'); }}>
-                      <Ionicons name="location-outline" size={22} color="#10B981" style={styles.settingIcon} />
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingTextPrimary}>附近超级充电站</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="#666" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.settingItem}>
-                      <Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} />
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingTextPrimary}>隐私与安全</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="#666" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-                    <Text style={styles.logoutButtonText}>退出登录</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </Animated.View>
-      </View>
+                <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+                  <Text style={styles.logoutButtonText}>退出登录</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    flexDirection: 'row', // 横向布局，让菜单贴在右侧
-    backgroundColor: 'rgba(0,0,0,0.5)', // 左侧半透明遮罩
-  },
-  closeBackground: {
-    flex: 1, 
-    // 占据左侧剩余空间，点击即可关闭
-  },
   menuContainer: {
-    width: '85%', // 菜单占据屏幕宽度的 85%
-    backgroundColor: '#111',
-    shadowColor: '#000',
-    shadowOffset: { width: -5, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 20,
+    flex: 1,
+    width: '100%', // 100% 全屏无死角！
+    backgroundColor: '#000', // 换成深邃的纯黑色，更匹配主页
   },
   header: {
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
     paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
-    alignItems: 'flex-end', // 关闭按钮靠右
+    paddingBottom: 20,
   },
-  closeBtn: {
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 5,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '500',
+    marginLeft: 2,
   },
   modalBody: {
     flex: 1,
@@ -257,9 +245,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700'
   },
-  // 👇 重新排版的用户资料区域
   profileSection: {
-    alignItems: 'flex-start', // 靠左对齐
+    alignItems: 'flex-start',
     paddingVertical: 20,
     marginBottom: 10,
     borderBottomWidth: 1,
@@ -292,7 +279,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#1C1C1E', // 更淡的分割线
+    borderBottomColor: '#1C1C1E',
   },
   settingIcon: {
     marginRight: 15
@@ -309,7 +296,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E31937',
     paddingVertical: 16,
-    borderRadius: 50, // 官方样式的圆角按钮
+    borderRadius: 50,
     alignItems: 'center',
     marginTop: 20
   },
