@@ -6,9 +6,12 @@
     "scheme": "dmittapp",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark",
+      "backgroundColor": "#000000"
     },
     "android": {
       "adaptiveIcon": {
