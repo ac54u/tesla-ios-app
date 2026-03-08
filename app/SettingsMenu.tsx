@@ -67,11 +67,12 @@ export default function SettingsMenu({
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (visible) {
-      if (accessToken && !userInfo) {
+      if (accessToken) {
+        // 去掉了 !userInfo 的限制，现在每次打开面板都会拉取最新数据
         fetchUserInfo(accessToken);
-      } else if (!accessToken) {
+      } else {
         setUserInfo({ full_name: '同步中...', email: '请稍后重试' });
       }
     }
