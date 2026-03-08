@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
-import { StatusBar } from 'expo-status-bar'; // 👇 引入状态栏控制
+import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
@@ -94,7 +94,8 @@ export default function Layout() {
     }
   };
 
-  const fetchCarData = async (tokenToUse = refreshToken) => {
+  // 👇 修复 2：加上了 401 自动续期的逻辑
+  const fetchCarData = async (tokenToUse = refreshToken, isRetry = false) => {
     let currentAccess = accessToken;
     if (!currentAccess) {
       currentAccess = await fetchAccessToken(tokenToUse);
@@ -105,6 +106,15 @@ export default function Layout() {
       const vRes = await fetch('https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles', {
         headers: { Authorization: `Bearer ${currentAccess}` }
       });
+
+      // 遇到 401 无感刷新
+      if (vRes.status === 401 && !isRetry) {
+        console.log('Token 过期，无感刷新中...');
+        const newAccess = await fetchAccessToken(refreshToken);
+        if (newAccess) return fetchCarData(refreshToken, true);
+        return;
+      }
+
       const vData = await vRes.json();
       const vehicle = vData.response?.[0];
       
@@ -113,7 +123,6 @@ export default function Layout() {
         return;
       }
       
-      // 👇 关键修复：使用 id_s (字符串类型的 ID) 防止 JavaScript 精度丢失报错
       setVehicleId(vehicle.id_s);
       setVehicleName(vehicle.display_name || '我的特斯拉');
 
@@ -146,6 +155,10 @@ export default function Layout() {
         if (tokenMatch && tokenMatch[1]) {
           const newToken = tokenMatch[1];
           setRefreshToken(newToken);
+          
+          // 👇 修复 1：当拦截到 Token 登录成功后，在这里自动把设置面板关掉
+          setMenuVisible(false);
+
           await AsyncStorage.setItem('teslaRefreshToken', newToken);
           Alert.alert('登录成功', '正在获取车辆数据...');
           fetchCarData(newToken);
@@ -206,7 +219,8 @@ export default function Layout() {
     ]);
   };
 
-  const sendCommand = async (endpoint: string, body: Record<string, any> = {}) => {
+  // 👇 修复 2：加上发指令遇到 401 自动重试的逻辑
+  const sendCommand = async (endpoint: string, body: Record<string, any> = {}, isRetry = false) => {
     if (!vehicleId || !accessToken) {
       Alert.alert('提示', '车辆尚未连接，请稍后再试');
       return;
@@ -217,17 +231,23 @@ export default function Layout() {
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
+
+      if (res.status === 401 && !isRetry) {
+        const newAccess = await fetchAccessToken(refreshToken);
+        if (newAccess) return sendCommand(endpoint, body, true);
+      }
+
       if (res.ok) {
         Alert.alert('成功', '指令已发送');
         setTimeout(() => fetchCarData(), 2000);
+      } else {
+        Alert.alert('指令失败', `状态码: ${res.status}`);
       }
     } catch (error) { Alert.alert('指令发送失败', String(error)); }
   };
 
   return (
-    // 👇 包裹一层纯黑全屏的 View，解决刘海和底部的白边问题
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* 👇 让系统时间和电池图标变成白色亮色风格 */}
       <StatusBar style="light" />
 
       <SafeAreaView style={styles.container}>
@@ -305,12 +325,9 @@ export default function Layout() {
           refreshToken={refreshToken}
           accessToken={accessToken}
           vehicleId={vehicleId}
-          // 👇 就是改这一行，加一个 500 毫秒的延迟
+          // 👇 修复 1：去掉会卡死的 setTimeout，直接弹起浏览器。
           onLogin={() => { 
-            setMenuVisible(false); 
-            setTimeout(() => {
-              handleTeslaOAuthLogin();
-            }, 500);
+            handleTeslaOAuthLogin();
           }}
           onLogout={handleResetToken}
           onOpenMap={() => {
