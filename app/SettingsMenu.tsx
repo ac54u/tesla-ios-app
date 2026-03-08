@@ -144,11 +144,16 @@ export default function SettingsMenu({
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
                     <>
+                      {/* 👇 关键改动：给 Image 加上伪装 Header，完美突破特斯拉的头像防盗链 */}
                       <Image
                         source={{
-                          uri:
-                            userInfo?.profile_image_url ||
-                            'https://www.gravatar.com/avatar/0?d=mp'
+                          uri: userInfo?.profile_image_url && userInfo.profile_image_url.includes('tesla.cn')
+                            ? userInfo.profile_image_url
+                            : 'https://www.gravatar.com/avatar/0?d=mp',
+                          headers: {
+                            'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
+                            'Accept': '*/*'
+                          }
                         }}
                         style={styles.avatar}
                       />
