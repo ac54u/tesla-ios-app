@@ -1,4 +1,10 @@
+// app/index.tsx
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
+import { Canvas } from '@react-three/fiber/native';
+import { StatusBar } from 'expo-status-bar'; // 👇 引入状态栏控制
+import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,11 +18,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
-import { Ionicons } from '@expo/vector-icons';
-import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
-import { Canvas } from '@react-three/fiber/native';
-import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ChargingMap from './ChargingMap';
 import SettingsMenu from './SettingsMenu';
@@ -61,7 +62,6 @@ export default function Layout() {
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
 
-  // 1. 修复：提前声明核心异步请求函数，防止 TypeScript 报错
   const fetchAccessToken = async (currentToken = refreshToken) => {
     if (!currentToken) return null;
     if (isRefreshingToken) return null; 
@@ -113,10 +113,11 @@ export default function Layout() {
         return;
       }
       
-      setVehicleId(vehicle.id);
+      // 👇 关键修复：使用 id_s (字符串类型的 ID) 防止 JavaScript 精度丢失报错
+      setVehicleId(vehicle.id_s);
       setVehicleName(vehicle.display_name || '我的特斯拉');
 
-      const dataRes = await fetch(`https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles/${vehicle.id}/vehicle_data`, {
+      const dataRes = await fetch(`https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles/${vehicle.id_s}/vehicle_data`, {
         headers: { Authorization: `Bearer ${currentAccess}` }
       });
       const carData = await dataRes.json();
@@ -134,12 +135,11 @@ export default function Layout() {
     }
   };
 
-useEffect(() => {
+  useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
       if (url && url.includes('refresh_token=')) {
         
-        // 👇 新增这一行：拿到 Token 后，立刻关掉应用内浏览器
         WebBrowser.dismissBrowser();
 
         const tokenMatch = url.match(/refresh_token=([^&]+)/);
@@ -172,14 +172,13 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-const handleTeslaOAuthLogin = async () => {
+  const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
     const scope = 'openid offline_access email profile user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds';
     const state = Math.random().toString(36).substring(7);
     const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
     
-    // 👇 替换成在 App 内弹出网页
     try { 
       await WebBrowser.openBrowserAsync(authUrl); 
     } catch (error) { 
@@ -226,96 +225,102 @@ const handleTeslaOAuthLogin = async () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.imageContainer}>
-          <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
-            <color attach="background" args={['#000000']} />
-            <ambientLight intensity={1.5} />
-            <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
-            <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
-            <directionalLight position={[0, 5, -10]} intensity={2.5} color="white" />
-            <directionalLight position={[0, 10, 0]} intensity={1.5} color="white" />
-            <Suspense fallback={null}>
-              <Tesla3DModel setModelLoaded={setModelLoaded} />
-            </Suspense>
-            <OrbitControls enableZoom={false} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} minPolarAngle={Math.PI / 2.2} maxPolarAngle={Math.PI / 2.2} />
-          </Canvas>
-          {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
-          
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>已驻车</Text>
-          </View>
+    // 👇 包裹一层纯黑全屏的 View，解决刘海和底部的白边问题
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {/* 👇 让系统时间和电池图标变成白色亮色风格 */}
+      <StatusBar style="light" />
 
-          <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
-            <Ionicons name="menu" size={26} color="#fff" />
-          </TouchableOpacity>
-        </View>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.imageContainer}>
+            <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
+              <color attach="background" args={['#000000']} />
+              <ambientLight intensity={1.5} />
+              <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
+              <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
+              <directionalLight position={[0, 5, -10]} intensity={2.5} color="white" />
+              <directionalLight position={[0, 10, 0]} intensity={1.5} color="white" />
+              <Suspense fallback={null}>
+                <Tesla3DModel setModelLoaded={setModelLoaded} />
+              </Suspense>
+              <OrbitControls enableZoom={false} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} minPolarAngle={Math.PI / 2.2} maxPolarAngle={Math.PI / 2.2} />
+            </Canvas>
+            {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
+            
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>已驻车</Text>
+            </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity activeOpacity={0.6} onPress={() => refreshToken ? fetchCarData() : undefined} disabled={!refreshToken}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.title}>{vehicleName}</Text>
-                {vehicleId ? <Text style={styles.refreshIcon}> 🔄</Text> : null}
-              </View>
+            <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="menu" size={26} color="#fff" />
             </TouchableOpacity>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.rangeText}>{range} km</Text>
-              <Text style={styles.subText}>剩余续航</Text>
-            </View>
           </View>
 
-          <View style={styles.infoGrid}>
-            <View style={styles.infoCol}>
-              <Text style={styles.tempText}>{temp}°C</Text>
-              <Text style={styles.subText}>车内温度</Text>
-            </View>
-            <View style={styles.infoCol}>
-              <Text style={styles.locationText}>{locationText}</Text>
-              <Text style={styles.subText}>当前位置</Text>
-            </View>
-          </View>
-
-          <View style={styles.controls}>
-            <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('door_lock')}><Text style={styles.buttonText}>🔒 锁车</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('climate_on', { temperature: 16 })}><Text style={styles.buttonText}>❄️ 预冷到16°C</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('set_sentry_mode', { on: true })}><Text style={styles.buttonText}>👁️ 开哨兵模式</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.buttonGreen} onPress={() => sendCommand('charge_start')}><Text style={styles.buttonText}>⚡ 开始充电</Text></TouchableOpacity>
-          </View>
-
-          {!refreshToken && (
-            <View style={styles.tokenSection}>
-              <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
-              <TouchableOpacity style={styles.buttonAuthRed} onPress={handleTeslaOAuthLogin}>
-                <Text style={styles.buttonTextWhiteLarge}>登录 Tesla 账号</Text>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity activeOpacity={0.6} onPress={() => refreshToken ? fetchCarData() : undefined} disabled={!refreshToken}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.title}>{vehicleName}</Text>
+                  {vehicleId ? <Text style={styles.refreshIcon}> 🔄</Text> : null}
+                </View>
               </TouchableOpacity>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.rangeText}>{range} km</Text>
+                <Text style={styles.subText}>剩余续航</Text>
+              </View>
             </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
 
-      <SettingsMenu
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
-        refreshToken={refreshToken}
-        accessToken={accessToken}
-        vehicleId={vehicleId}
-        onLogin={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}
-        onLogout={handleResetToken}
-        onOpenMap={() => {
-          setMenuVisible(false);
-          setTimeout(() => setMapVisible(true), 300);
-        }}
-      />
+            <View style={styles.infoGrid}>
+              <View style={styles.infoCol}>
+                <Text style={styles.tempText}>{temp}°C</Text>
+                <Text style={styles.subText}>车内温度</Text>
+              </View>
+              <View style={styles.infoCol}>
+                <Text style={styles.locationText}>{locationText}</Text>
+                <Text style={styles.subText}>当前位置</Text>
+              </View>
+            </View>
 
-      <ChargingMap 
-        visible={mapVisible} 
-        onClose={() => setMapVisible(false)} 
-        accessToken={accessToken} 
-        vehicleId={vehicleId} 
-      />
-    </SafeAreaView>
+            <View style={styles.controls}>
+              <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('door_lock')}><Text style={styles.buttonText}>🔒 锁车</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('climate_on', { temperature: 16 })}><Text style={styles.buttonText}>❄️ 预冷到16°C</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.buttonDark} onPress={() => sendCommand('set_sentry_mode', { on: true })}><Text style={styles.buttonText}>👁️ 开哨兵模式</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.buttonGreen} onPress={() => sendCommand('charge_start')}><Text style={styles.buttonText}>⚡ 开始充电</Text></TouchableOpacity>
+            </View>
+
+            {!refreshToken && (
+              <View style={styles.tokenSection}>
+                <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
+                <TouchableOpacity style={styles.buttonAuthRed} onPress={handleTeslaOAuthLogin}>
+                  <Text style={styles.buttonTextWhiteLarge}>登录 Tesla 账号</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        <SettingsMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          refreshToken={refreshToken}
+          accessToken={accessToken}
+          vehicleId={vehicleId}
+          onLogin={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}
+          onLogout={handleResetToken}
+          onOpenMap={() => {
+            setMenuVisible(false);
+            setTimeout(() => setMapVisible(true), 300);
+          }}
+        />
+
+        <ChargingMap 
+          visible={mapVisible} 
+          onClose={() => setMapVisible(false)} 
+          accessToken={accessToken} 
+          vehicleId={vehicleId} 
+        />
+      </SafeAreaView>
+    </View>
   );
 }
 
