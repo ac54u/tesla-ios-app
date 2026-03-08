@@ -1,3 +1,4 @@
+// app/SettingsMenu.tsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
@@ -5,6 +6,7 @@ import {
     Alert,
     Image,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -36,7 +38,6 @@ export default function SettingsMenu({
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
-  // 1. 修复：将函数定义移到 useEffect 前面
   const fetchUserInfo = async (currentAccess: string) => {
     if (!currentAccess) return;
     setLoadingUser(true);
@@ -86,15 +87,34 @@ export default function SettingsMenu({
   };
 
   return (
-    <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+    <Modal 
+      animationType="slide" 
+      transparent={Platform.OS === 'android'} // Android 保持透明背景以实现半屏，iOS 使用 pageSheet
+      visible={visible} 
+      onRequestClose={onClose}
+      // 👇 这里是关键：在 iOS 上使用 formSheet/pageSheet 可以原生支持下拉关闭和类似图二的阴影层级
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+    >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>账号与设置</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
+          
+          {/* 👇 顶部小灰线拖拽指示器 */}
+          <View style={styles.dragIndicatorContainer}>
+            <View style={styles.dragIndicator} />
           </View>
+
+          <View style={styles.modalHeader}>
+            {/* 左侧下拉按钮 (仿图二样式) */}
+            <TouchableOpacity onPress={onClose} style={styles.closeButtonLeft}>
+               <Ionicons name="chevron-down" size={24} color="#fff" />
+            </TouchableOpacity>
+            
+            <Text style={styles.modalTitle}>账号与设置</Text>
+            
+            {/* 右侧占位，保证标题绝对居中 */}
+            <View style={{ width: 40 }} />
+          </View>
+
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             {!refreshToken ? (
               <View style={styles.unauthView}>
@@ -117,34 +137,34 @@ export default function SettingsMenu({
                     </>
                   )}
                 </View>
+                
+                {/* 👇 调整了列表项的圆角和边距，更贴近图二独立卡片的感觉 */}
                 <View style={styles.settingsList}>
-                  <View style={styles.settingItem}>
+                  <TouchableOpacity style={styles.settingItem}>
                     <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>引荐奖励</Text>
-                      <Text style={styles.settingTextSecondary}>分享您的引荐链接获取积分</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#666" />
-                  </View>
+                  </TouchableOpacity>
                   
                   <TouchableOpacity style={styles.settingItem} onPress={handleOpenMap}>
                     <Ionicons name="location-outline" size={22} color="#10B981" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>附近超级充电站</Text>
-                      <Text style={styles.settingTextSecondary}>查看您车辆周边的可用超充</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#666" />
                   </TouchableOpacity>
                   
-                  <View style={styles.settingItem}>
+                  <TouchableOpacity style={[styles.settingItem, styles.settingItemNoBorder]}>
                     <Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>隐私与安全</Text>
-                      <Text style={styles.settingTextSecondary}>API 访问权限与数据管理</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#666" />
-                  </View>
+                  </TouchableOpacity>
                 </View>
+
                 <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
                   <Text style={styles.logoutButtonText}>退出登录</Text>
                 </TouchableOpacity>
@@ -158,26 +178,96 @@ export default function SettingsMenu({
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
-  modalContent: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '85%', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#222', marginBottom: 10 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  closeButton: { padding: 4 },
+  // iOS 上的 pageSheet 自带背景，所以这里把背景改成了纯黑，以契合整体 UI
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: Platform.OS === 'ios' ? '#111' : 'rgba(0, 0, 0, 0.6)' },
+  modalContent: { 
+    backgroundColor: '#111', 
+    borderTopLeftRadius: Platform.OS === 'ios' ? 0 : 24, 
+    borderTopRightRadius: Platform.OS === 'ios' ? 0 : 24, 
+    flex: Platform.OS === 'ios' ? 1 : undefined,
+    height: Platform.OS === 'ios' ? '100%' : '90%', 
+    paddingHorizontal: 20, 
+    paddingTop: 10, 
+    paddingBottom: 40 
+  },
+  
+  // 👇 顶部拖拽小灰线样式
+  dragIndicatorContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#444', // 深灰线条
+    borderRadius: 2,
+  },
+
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingBottom: 15, 
+    marginBottom: 20 
+  },
+  
+  // 👇 改为左侧方形深灰背景按钮
+  closeButtonLeft: { 
+    width: 40,
+    height: 40,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+
+  modalTitle: { color: '#fff', fontSize: 16, fontWeight: '500' },
   modalBody: { flex: 1 },
+  
   unauthView: { alignItems: 'center', justifyContent: 'center', marginTop: 60 },
   unauthText: { color: '#888', fontSize: 16, marginTop: 15, marginBottom: 30 },
   buttonAuthRed: { backgroundColor: '#E31937', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
   buttonTextWhiteLarge: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
-  profileCard: { alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 20, paddingVertical: 30, marginBottom: 20 },
-  avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 15, borderWidth: 2, borderColor: '#333' },
-  userName: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 5 },
-  userEmail: { color: '#888', fontSize: 12, textAlign: 'center', paddingHorizontal: 10 },
-  settingsList: { backgroundColor: '#1C1C1E', borderRadius: 16, marginBottom: 30 },
-  settingItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
+  
+  profileCard: { 
+    alignItems: 'center', 
+    backgroundColor: '#1C1C1E', 
+    borderRadius: 16, 
+    paddingVertical: 35, 
+    marginBottom: 20 
+  },
+  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 15, backgroundColor: '#333' },
+  userName: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 5 },
+  userEmail: { color: '#888', fontSize: 13, textAlign: 'center', paddingHorizontal: 10 },
+  
+  // 👇 列表样式调整：去掉副标题，间距更大，接近官方菜单
+  settingsList: { marginBottom: 30 },
+  settingItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#1C1C1E', // 独立卡片背景
+    paddingVertical: 18, 
+    paddingHorizontal: 15, 
+    borderRadius: 12,
+    marginBottom: 10 // 卡片之间有缝隙
+  },
+  settingItemNoBorder: {
+    marginBottom: 0
+  },
   settingIcon: { marginRight: 15 },
-  settingTextContainer: { flex: 1 },
-  settingTextPrimary: { color: '#fff', fontSize: 16, fontWeight: '500', marginBottom: 3 },
-  settingTextSecondary: { color: '#888', fontSize: 12 },
-  logoutButton: { backgroundColor: 'rgba(227, 25, 55, 0.1)', borderWidth: 1, borderColor: '#E31937', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginBottom: 20 },
-  logoutButtonText: { color: '#E31937', fontSize: 16, fontWeight: '600' },
+  settingTextContainer: { flex: 1, justifyContent: 'center' },
+  settingTextPrimary: { color: '#fff', fontSize: 15, fontWeight: '400' },
+  
+  // 👇 退出按钮改为红边黑底，更克制
+  logoutButton: { 
+    backgroundColor: 'transparent', 
+    borderWidth: 1, 
+    borderColor: '#E31937', 
+    paddingVertical: 16, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  logoutButtonText: { color: '#E31937', fontSize: 15, fontWeight: '500' },
 });
