@@ -238,9 +238,14 @@ export default function App() {
         <View style={styles.imageContainer}>
           <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
             <color attach="background" args={['#000000']} />
-            <ambientLight intensity={1.2} />
+            
+            {/* 🌟 修复光照：增强环境光，新增后方和上方补光 */}
+            <ambientLight intensity={1.5} />
             <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
             <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
+            <directionalLight position={[0, 5, -10]} intensity={2.5} color="white" />
+            <directionalLight position={[0, 10, 0]} intensity={1.5} color="white" />
+
             <Suspense fallback={null}>
               <Tesla3DModel setModelLoaded={setModelLoaded} />
             </Suspense>
