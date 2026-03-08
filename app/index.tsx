@@ -160,7 +160,7 @@ export default function Layout() {
           setMenuVisible(false);
 
           await AsyncStorage.setItem('teslaRefreshToken', newToken);
-          Alert.alert('登录成功', '正在获取车辆数据...');
+          //Alert.alert('登录成功', '正在获取车辆数据...');
           fetchCarData(newToken);
         }
       }
