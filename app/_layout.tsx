@@ -1,12 +1,11 @@
+// app/_layout.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Linking,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,6 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import ChargingMap from '../ChargingMap';
+import SettingsMenu from './SettingsMenu';
 
 // --- 3D 车辆组件 ---
 interface Tesla3DModelProps {
@@ -46,7 +48,7 @@ function FallbackLoader() {
   );
 }
 
-export default function App() {
+export default function Layout() {
   const [refreshToken, setRefreshToken] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [vehicleId, setVehicleId] = useState('');
@@ -58,9 +60,8 @@ export default function App() {
   const [modelLoaded, setModelLoaded] = useState(false);
 
   const [menuVisible, setMenuVisible] = useState(false);
-  const [userInfo, setUserInfo] = useState<any>(null);
-  const [loadingUser, setLoadingUser] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
@@ -94,11 +95,9 @@ export default function App() {
     loadToken();
   }, []);
 
-  // 🌟 核心修复 1：在 scope 中加入官方指定的 user_data 和 standard OIDC scopes
   const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
-    // 强制索要 user_data 权限
     const scope = 'openid offline_access email profile user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds';
     const state = Math.random().toString(36).substring(7);
     const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
@@ -116,7 +115,6 @@ export default function App() {
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
-          setUserInfo(null); 
           setMenuVisible(false); 
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
@@ -155,48 +153,6 @@ export default function App() {
       console.error('获取 Access Token 失败:', error);
       setIsRefreshingToken(false);
       return null;
-    }
-  };
-
-  // 🌟 核心修复 2：使用官方 JSON 文档里提供的 userinfo_endpoint 获取资料
-  const fetchUserInfo = async (currentAccess: string) => {
-    if (!currentAccess) return;
-    setLoadingUser(true);
-    try {
-      // 访问正确的官方 Auth 接口
-      const res = await fetch('https://auth.tesla.cn/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${currentAccess}` }
-      });
-      const data = await res.json();
-      
-      // 解析标准的 OIDC 格式返回数据
-      if (res.ok) {
-        setUserInfo({
-          full_name: data.name || data.full_name || 'Tesla 车主',
-          email: data.email || '已隐藏邮箱',
-          // OIDC 标准头像是 picture 字段
-          profile_image_url: data.picture || data.profile_image_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-        });
-      } else {
-        setUserInfo({ 
-          full_name: 'Tesla 车主', 
-          email: data.error_description || data.error || '获取资料受限，请重新登录',
-          profile_image_url: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-        });
-      }
-    } catch (error) {
-      setUserInfo({ full_name: 'Tesla 车主', email: '网络请求失败', profile_image_url: 'https://www.gravatar.com/avatar/0?d=mp' });
-    } finally {
-      setLoadingUser(false);
-    }
-  };
-
-  const openMenu = () => {
-    setMenuVisible(true);
-    if (accessToken && !userInfo) {
-      fetchUserInfo(accessToken);
-    } else if (!accessToken) {
-      setUserInfo({ full_name: '同步中...', email: '请稍后重试' });
     }
   };
 
@@ -280,7 +236,7 @@ export default function App() {
             <Text style={styles.statusText}>已驻车</Text>
           </View>
 
-          <TouchableOpacity style={styles.menuIconContainer} onPress={openMenu}>
+          <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
             <Ionicons name="menu" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -328,51 +284,26 @@ export default function App() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal animationType="slide" transparent={true} visible={menuVisible} onRequestClose={() => setMenuVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>账号与设置</Text>
-              <TouchableOpacity onPress={() => setMenuVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {!refreshToken ? (
-                <View style={styles.unauthView}>
-                  <Ionicons name="person-circle-outline" size={80} color="#444" />
-                  <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
-                  <TouchableOpacity style={styles.buttonAuthRed} onPress={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}>
-                    <Text style={styles.buttonTextWhiteLarge}>去登录</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View>
-                  <View style={styles.profileCard}>
-                    {loadingUser ? (
-                      <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 20 }} />
-                    ) : (
-                      <>
-                        <Image source={{ uri: userInfo?.profile_image_url || 'https://www.gravatar.com/avatar/0?d=mp' }} style={styles.avatar} />
-                        <Text style={styles.userName}>{userInfo?.full_name || 'Tesla 车主'}</Text>
-                        <Text style={styles.userEmail} numberOfLines={1}>{userInfo?.email || '获取邮箱中...'}</Text>
-                      </>
-                    )}
-                  </View>
-                  <View style={styles.settingsList}>
-                    <View style={styles.settingItem}><Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} /><View style={styles.settingTextContainer}><Text style={styles.settingTextPrimary}>引荐奖励</Text><Text style={styles.settingTextSecondary}>分享您的引荐链接获取积分</Text></View><Ionicons name="chevron-forward" size={20} color="#666" /></View>
-                    <View style={styles.settingItem}><Ionicons name="car-sport-outline" size={22} color="#fff" style={styles.settingIcon} /><View style={styles.settingTextContainer}><Text style={styles.settingTextPrimary}>车辆管理</Text><Text style={styles.settingTextSecondary}>管理已绑定的设备与车辆</Text></View><Ionicons name="chevron-forward" size={20} color="#666" /></View>
-                    <View style={styles.settingItem}><Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} /><View style={styles.settingTextContainer}><Text style={styles.settingTextPrimary}>隐私与安全</Text><Text style={styles.settingTextSecondary}>API 访问权限与数据管理</Text></View><Ionicons name="chevron-forward" size={20} color="#666" /></View>
-                  </View>
-                  <TouchableOpacity style={styles.logoutButton} onPress={handleResetToken}>
-                    <Text style={styles.logoutButtonText}>退出登录</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <SettingsMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        refreshToken={refreshToken}
+        accessToken={accessToken}
+        vehicleId={vehicleId}
+        onLogin={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}
+        onLogout={handleResetToken}
+        onOpenMap={() => {
+          setMenuVisible(false);
+          setTimeout(() => setMapVisible(true), 300);
+        }}
+      />
+
+      <ChargingMap 
+        visible={mapVisible} 
+        onClose={() => setMapVisible(false)} 
+        accessToken={accessToken} 
+        vehicleId={vehicleId} 
+      />
     </SafeAreaView>
   );
 }
@@ -404,26 +335,4 @@ const styles = StyleSheet.create({
   buttonTextWhiteLarge: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
   tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
   authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
-
-  // Modal (个人中心) 样式
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
-  modalContent: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '85%', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#222', marginBottom: 10 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  closeButton: { padding: 4 },
-  modalBody: { flex: 1 },
-  unauthView: { alignItems: 'center', justifyContent: 'center', marginTop: 60 },
-  unauthText: { color: '#888', fontSize: 16, marginTop: 15, marginBottom: 30 },
-  profileCard: { alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 20, paddingVertical: 30, marginBottom: 20 },
-  avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 15, borderWidth: 2, borderColor: '#333' },
-  userName: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 5 },
-  userEmail: { color: '#888', fontSize: 12, textAlign: 'center', paddingHorizontal: 10 },
-  settingsList: { backgroundColor: '#1C1C1E', borderRadius: 16, marginBottom: 30 },
-  settingItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
-  settingIcon: { marginRight: 15 },
-  settingTextContainer: { flex: 1 },
-  settingTextPrimary: { color: '#fff', fontSize: 16, fontWeight: '500', marginBottom: 3 },
-  settingTextSecondary: { color: '#888', fontSize: 12 },
-  logoutButton: { backgroundColor: 'rgba(227, 25, 55, 0.1)', borderWidth: 1, borderColor: '#E31937', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginBottom: 20 },
-  logoutButtonText: { color: '#E31937', fontSize: 16, fontWeight: '600' },
 });
