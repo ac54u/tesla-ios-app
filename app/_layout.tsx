@@ -3,8 +3,10 @@ import React, { Suspense, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -24,7 +26,6 @@ interface Tesla3DModelProps {
 }
 
 function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
-  // 使用 GITHUB 上的托管模型
   const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
 
   useEffect(() => {
@@ -44,7 +45,6 @@ function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
   );
 }
 
-// 占位加载动画
 function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
@@ -65,7 +65,11 @@ export default function App() {
   const [locationText, setLocationText] = useState('定位获取中...');
   const [modelLoaded, setModelLoaded] = useState(false);
 
-  // 1. 监听来自服务器端传回的 Deep Link
+  // 🌟 个人中心状态
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(false);
+
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
@@ -92,7 +96,6 @@ export default function App() {
     };
   }, []);
 
-  // 2. 初始化加载本地 Token
   useEffect(() => {
     const loadToken = async () => {
       const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
@@ -106,11 +109,11 @@ export default function App() {
     loadToken();
   }, []);
 
-  // 触发 OAuth 2.0 登录流程
   const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
-    const scope = 'openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds';
+    // 🌟 修改点：新增了 profile 和 email 权限，用于获取个人信息
+    const scope = 'openid offline_access profile email vehicle_device_data vehicle_cmds vehicle_charging_cmds';
     const state = Math.random().toString(36).substring(7);
 
     const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
@@ -133,6 +136,8 @@ export default function App() {
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
+          setUserInfo(null); // 清除个人信息
+          setMenuVisible(false); // 关闭菜单
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
@@ -165,6 +170,33 @@ export default function App() {
     } catch (error) {
       console.error('获取 Access Token 失败:', error);
       return null;
+    }
+  };
+
+  // 🌟 新增：获取用户个人信息
+  const fetchUserInfo = async () => {
+    if (!accessToken) return;
+    setLoadingUser(true);
+    try {
+      const res = await fetch('https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/users/me', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+      if (data.response) {
+        setUserInfo(data.response);
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  // 🌟 修改：打开菜单时拉取最新数据
+  const openMenu = () => {
+    setMenuVisible(true);
+    if (accessToken && !userInfo) {
+      fetchUserInfo();
     }
   };
 
@@ -234,12 +266,9 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        {/* 3D 车辆展示区 */}
         <View style={styles.imageContainer}>
           <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
             <color attach="background" args={['#000000']} />
-            
-            {/* 🌟 修复光照：增强环境光，新增后方和上方补光 */}
             <ambientLight intensity={1.5} />
             <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
             <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
@@ -260,19 +289,18 @@ export default function App() {
           {/* 右上角菜单按钮 */}
           <TouchableOpacity 
             style={styles.menuIconContainer} 
-            onPress={() => Alert.alert('菜单', '设置和更多功能即将开放！')}
+            onPress={openMenu}
           >
-            <Ionicons name="menu" size={22} color="#fff" />
+            <Ionicons name="menu" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* 车辆信息与控制区 */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
+            {/* 之前这里绑定的长按退出（onLongPress）我们去掉了，因为现在菜单里有正式的退出按钮了 */}
             <TouchableOpacity 
               activeOpacity={0.6} 
               onPress={() => refreshToken ? fetchCarData() : undefined} 
-              onLongPress={refreshToken ? handleResetToken : undefined}
               disabled={!refreshToken}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -312,7 +340,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* 登录部分 */}
           {!refreshToken && (
             <View style={styles.tokenSection}>
               <Text style={styles.authDesc}>绑定你的特斯拉账号以安全控制车辆</Text>
@@ -323,11 +350,104 @@ export default function App() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 🌟 个人资料抽屉 / Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={menuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            
+            {/* 头部：关闭按钮 */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>账号与设置</Text>
+              <TouchableOpacity onPress={() => setMenuVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* 内容区 */}
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              
+              {!refreshToken ? (
+                // 未登录状态
+                <View style={styles.unauthView}>
+                  <Ionicons name="person-circle-outline" size={80} color="#444" />
+                  <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
+                  <TouchableOpacity style={styles.buttonAuthRed} onPress={() => { setMenuVisible(false); handleTeslaOAuthLogin(); }}>
+                    <Text style={styles.buttonTextWhiteLarge}>去登录</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // 已登录状态
+                <View>
+                  {/* 个人资料卡片 */}
+                  <View style={styles.profileCard}>
+                    {loadingUser ? (
+                      <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 20 }} />
+                    ) : (
+                      <>
+                        <Image 
+                          source={{ uri: userInfo?.profile_image_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }} 
+                          style={styles.avatar} 
+                        />
+                        <Text style={styles.userName}>{userInfo?.full_name || 'Tesla 车主'}</Text>
+                        <Text style={styles.userEmail}>{userInfo?.email || '获取邮箱中...'}</Text>
+                      </>
+                    )}
+                  </View>
+
+                  {/* 设置列表区 */}
+                  <View style={styles.settingsList}>
+                    <View style={styles.settingItem}>
+                      <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingTextPrimary}>引荐奖励</Text>
+                        <Text style={styles.settingTextSecondary}>分享您的引荐链接获取积分</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#666" />
+                    </View>
+
+                    <View style={styles.settingItem}>
+                      <Ionicons name="car-sport-outline" size={22} color="#fff" style={styles.settingIcon} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingTextPrimary}>车辆管理</Text>
+                        <Text style={styles.settingTextSecondary}>管理已绑定的设备与车辆</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#666" />
+                    </View>
+
+                    <View style={styles.settingItem}>
+                      <Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingTextPrimary}>隐私与安全</Text>
+                        <Text style={styles.settingTextSecondary}>API 访问权限与数据管理</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#666" />
+                    </View>
+                  </View>
+                  
+                  {/* 退出登录按钮 */}
+                  <TouchableOpacity style={styles.logoutButton} onPress={handleResetToken}>
+                    <Text style={styles.logoutButtonText}>退出登录</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // ... 之前的样式全部保留 ...
   container: { flex: 1, backgroundColor: '#000' },
   imageContainer: { height: 260, backgroundColor: '#000', position: 'relative' },
   canvas: { ...StyleSheet.absoluteFillObject },
@@ -349,28 +469,124 @@ const styles = StyleSheet.create({
   controls: { gap: 10 },
   buttonDark: { backgroundColor: '#1C1C1E', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  // 核心样式：基础按钮文字
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 16, 
-    fontWeight: '500' 
-  },
-  // 核心样式：红色登录按钮 (无光晕)
-  buttonAuthRed: { 
-    backgroundColor: '#E31937', 
-    paddingVertical: 16, 
-    width: '100%',
-    borderRadius: 50, 
-    alignItems: 'center', 
-    marginTop: 10,
-  },
-  // 核心样式：红色登录按钮大号文字
-  buttonTextWhiteLarge: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
+  buttonAuthRed: { backgroundColor: '#E31937', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
+  buttonTextWhiteLarge: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
   tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
   authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
+
+  // 🌟 新增的 Modal (个人中心) 样式
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // 半透明黑色遮罩
+  },
+  modalContent: {
+    backgroundColor: '#111', // 深灰色背景，区分纯黑底色
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '85%', // 抽屉占据屏幕 85% 高度
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  unauthView: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+  },
+  unauthText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 15,
+    marginBottom: 30,
+  },
+  profileCard: {
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    paddingVertical: 30,
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#333',
+  },
+  userName: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  userEmail: {
+    color: '#888',
+    fontSize: 14,
+  },
+  settingsList: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    marginBottom: 30,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  settingIcon: {
+    marginRight: 15,
+  },
+  settingTextContainer: {
+    flex: 1,
+  },
+  settingTextPrimary: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 3,
+  },
+  settingTextSecondary: {
+    color: '#888',
+    fontSize: 12,
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(227, 25, 55, 0.1)', // 红色半透明背景
+    borderWidth: 1,
+    borderColor: '#E31937',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoutButtonText: {
+    color: '#E31937',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
