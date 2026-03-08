@@ -56,7 +56,7 @@ export default function SettingsMenu({
         },
         body: JSON.stringify({
           grant_type: 'refresh_token',
-          client_id: 'ownerapi',           // ← 如果你登录时用了其他 client_id（比如 tesla-app），请改这里
+          client_id: 'tesla-app',           // ← 如果你登录时用了其他 client_id（比如 tesla-app），请改这里
           refresh_token: currentRefresh,
           scope: 'openid email offline_access'
         })
