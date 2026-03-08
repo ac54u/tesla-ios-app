@@ -16,8 +16,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import ChargingMap from './ChargingMap';
 import SettingsMenu from './SettingsMenu';
 
@@ -134,10 +134,14 @@ export default function Layout() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
       if (url && url.includes('refresh_token=')) {
+        
+        // 👇 新增这一行：拿到 Token 后，立刻关掉应用内浏览器
+        WebBrowser.dismissBrowser();
+
         const tokenMatch = url.match(/refresh_token=([^&]+)/);
         if (tokenMatch && tokenMatch[1]) {
           const newToken = tokenMatch[1];
@@ -168,13 +172,19 @@ export default function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleTeslaOAuthLogin = async () => {
+const handleTeslaOAuthLogin = async () => {
     const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
     const redirectUri = 'https://dmitt.com/callback';
     const scope = 'openid offline_access email profile user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds';
     const state = Math.random().toString(36).substring(7);
     const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
-    try { await Linking.openURL(authUrl); } catch (error) { Alert.alert('错误', '无法打开浏览器，请检查系统设置'); }
+    
+    // 👇 替换成在 App 内弹出网页
+    try { 
+      await WebBrowser.openBrowserAsync(authUrl); 
+    } catch (error) { 
+      Alert.alert('错误', '无法打开登录页面'); 
+    }
   };
 
   const handleResetToken = () => {
