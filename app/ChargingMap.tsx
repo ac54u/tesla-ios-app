@@ -11,7 +11,6 @@ import {
     View
 } from 'react-native';
 
-// 定义传入的参数格式
 interface ChargingMapProps {
   visible: boolean;
   onClose: () => void;
@@ -24,13 +23,7 @@ export default function ChargingMap({ visible, onClose, accessToken, vehicleId }
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 当弹窗打开时，拉取附近的超充站数据
-  useEffect(() => {
-    if (visible && accessToken && vehicleId) {
-      fetchNearbyChargers();
-    }
-  }, [visible]);
-
+  // 1. 修复：函数必须定义在调用的 useEffect 前面
   const fetchNearbyChargers = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -41,7 +34,6 @@ export default function ChargingMap({ visible, onClose, accessToken, vehicleId }
       const data = await res.json();
       
       if (res.ok && data.response) {
-        // 特斯拉 API 返回的数据里通常包含 superchargers 和 destination_chargers
         setChargingSites(data.response.superchargers || []);
       } else {
         setErrorMsg('无法获取附近超充数据');
@@ -53,10 +45,16 @@ export default function ChargingMap({ visible, onClose, accessToken, vehicleId }
     }
   };
 
+  useEffect(() => {
+    if (visible && accessToken && vehicleId) {
+      fetchNearbyChargers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, accessToken, vehicleId]);
+
   return (
     <Modal animationType="slide" transparent={false} visible={visible} onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
-        {/* 顶部导航栏 */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>附近超级充电站</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -64,7 +62,6 @@ export default function ChargingMap({ visible, onClose, accessToken, vehicleId }
           </TouchableOpacity>
         </View>
 
-        {/* 内容区 */}
         <View style={styles.content}>
           {loading ? (
             <View style={styles.centerView}>
@@ -100,7 +97,6 @@ export default function ChargingMap({ visible, onClose, accessToken, vehicleId }
                         空闲: <Text style={styles.highlightText}>{site.available_stalls}</Text> / {site.total_stalls}
                       </Text>
                     </View>
-                    {/* 你可以在这里继续扩展其他信息，比如充电功率等 */}
                   </View>
                 </View>
               ))}

@@ -1,4 +1,3 @@
-// app/_layout.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
@@ -19,10 +18,9 @@ import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ChargingMap from '../ChargingMap';
+import ChargingMap from './ChargingMap';
 import SettingsMenu from './SettingsMenu';
 
-// --- 3D 车辆组件 ---
 interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
 }
@@ -63,67 +61,7 @@ export default function Layout() {
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
 
-  useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
-      const url = event.url;
-      if (url && url.includes('refresh_token=')) {
-        const tokenMatch = url.match(/refresh_token=([^&]+)/);
-        if (tokenMatch && tokenMatch[1]) {
-          const newToken = tokenMatch[1];
-          setRefreshToken(newToken);
-          await AsyncStorage.setItem('teslaRefreshToken', newToken);
-          Alert.alert('登录成功', '正在获取车辆数据...');
-          fetchCarData(newToken);
-        }
-      }
-    };
-    const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
-    Linking.getInitialURL().then((url) => { if (url) handleDeepLink({ url }); });
-    return () => linkingSubscription.remove();
-  }, []);
-
-  useEffect(() => {
-    const loadToken = async () => {
-      const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
-      if (savedToken) {
-        setRefreshToken(savedToken);
-        setTimeout(() => fetchCarData(savedToken), 500); 
-      } else {
-        setVehicleName('请先登录特斯拉账号');
-      }
-    };
-    loadToken();
-  }, []);
-
-  const handleTeslaOAuthLogin = async () => {
-    const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
-    const redirectUri = 'https://dmitt.com/callback';
-    const scope = 'openid offline_access email profile user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds';
-    const state = Math.random().toString(36).substring(7);
-    const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
-    try { await Linking.openURL(authUrl); } catch (error) { Alert.alert('错误', '无法打开浏览器，请检查系统设置'); }
-  };
-
-  const handleResetToken = () => {
-    Alert.alert('退出登录', '确定要退出当前账号并清除数据吗？', [
-      { text: '取消', style: 'cancel' },
-      { 
-        text: '退出', 
-        style: 'destructive', 
-        onPress: async () => {
-          await AsyncStorage.removeItem('teslaRefreshToken');
-          setRefreshToken('');
-          setAccessToken('');
-          setVehicleId('');
-          setMenuVisible(false); 
-          setVehicleName('请先登录特斯拉账号');
-          setRange('---');
-          setTemp('--');
-        }
-      }
-    ]);
-  };
-
+  // 1. 修复：提前声明核心异步请求函数，防止 TypeScript 报错
   const fetchAccessToken = async (currentToken = refreshToken) => {
     if (!currentToken) return null;
     if (isRefreshingToken) return null; 
@@ -194,6 +132,69 @@ export default function Layout() {
     } catch (error) {
       console.error('获取车辆数据失败:', error);
     }
+  };
+
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const url = event.url;
+      if (url && url.includes('refresh_token=')) {
+        const tokenMatch = url.match(/refresh_token=([^&]+)/);
+        if (tokenMatch && tokenMatch[1]) {
+          const newToken = tokenMatch[1];
+          setRefreshToken(newToken);
+          await AsyncStorage.setItem('teslaRefreshToken', newToken);
+          Alert.alert('登录成功', '正在获取车辆数据...');
+          fetchCarData(newToken);
+        }
+      }
+    };
+    const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => { if (url) handleDeepLink({ url }); });
+    return () => linkingSubscription.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      const savedToken = await AsyncStorage.getItem('teslaRefreshToken');
+      if (savedToken) {
+        setRefreshToken(savedToken);
+        setTimeout(() => fetchCarData(savedToken), 500); 
+      } else {
+        setVehicleName('请先登录特斯拉账号');
+      }
+    };
+    loadToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleTeslaOAuthLogin = async () => {
+    const clientId = 'c4b90abb-d606-40e2-aa7a-2d7997dd584e'; 
+    const redirectUri = 'https://dmitt.com/callback';
+    const scope = 'openid offline_access email profile user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds';
+    const state = Math.random().toString(36).substring(7);
+    const authUrl = `https://auth.tesla.cn/oauth2/v3/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
+    try { await Linking.openURL(authUrl); } catch (error) { Alert.alert('错误', '无法打开浏览器，请检查系统设置'); }
+  };
+
+  const handleResetToken = () => {
+    Alert.alert('退出登录', '确定要退出当前账号并清除数据吗？', [
+      { text: '取消', style: 'cancel' },
+      { 
+        text: '退出', 
+        style: 'destructive', 
+        onPress: async () => {
+          await AsyncStorage.removeItem('teslaRefreshToken');
+          setRefreshToken('');
+          setAccessToken('');
+          setVehicleId('');
+          setMenuVisible(false); 
+          setVehicleName('请先登录特斯拉账号');
+          setRange('---');
+          setTemp('--');
+        }
+      }
+    ]);
   };
 
   const sendCommand = async (endpoint: string, body: Record<string, any> = {}) => {

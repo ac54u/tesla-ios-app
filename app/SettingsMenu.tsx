@@ -1,4 +1,3 @@
-// app/SettingsMenu.tsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
@@ -37,16 +36,7 @@ export default function SettingsMenu({
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      if (accessToken && !userInfo) {
-        fetchUserInfo(accessToken);
-      } else if (!accessToken) {
-        setUserInfo({ full_name: '同步中...', email: '请稍后重试' });
-      }
-    }
-  }, [visible, accessToken]);
-
+  // 1. 修复：将函数定义移到 useEffect 前面
   const fetchUserInfo = async (currentAccess: string) => {
     if (!currentAccess) return;
     setLoadingUser(true);
@@ -60,13 +50,13 @@ export default function SettingsMenu({
         setUserInfo({
           full_name: data.name || data.full_name || 'Tesla 车主',
           email: data.email || '已隐藏邮箱',
-          profile_image_url: data.picture || data.profile_image_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+          profile_image_url: data.picture || data.profile_image_url || 'https://www.gravatar.com/avatar/0?d=mp&f=y'
         });
       } else {
         setUserInfo({ 
           full_name: 'Tesla 车主', 
           email: data.error_description || data.error || '获取资料受限，请重新登录',
-          profile_image_url: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+          profile_image_url: 'https://www.gravatar.com/avatar/0?d=mp&f=y'
         });
       }
     } catch (error) {
@@ -75,6 +65,17 @@ export default function SettingsMenu({
       setLoadingUser(false);
     }
   };
+
+  useEffect(() => {
+    if (visible) {
+      if (accessToken && !userInfo) {
+        fetchUserInfo(accessToken);
+      } else if (!accessToken) {
+        setUserInfo({ full_name: '同步中...', email: '请稍后重试' });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, accessToken]);
 
   const handleOpenMap = () => {
     if (!vehicleId) {
@@ -122,7 +123,7 @@ export default function SettingsMenu({
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>引荐奖励</Text>
                       <Text style={styles.settingTextSecondary}>分享您的引荐链接获取积分</Text>
-                    </View> {/* <--- 改回 </View> */}
+                    </View>
                     <Ionicons name="chevron-forward" size={20} color="#666" />
                   </View>
                   
