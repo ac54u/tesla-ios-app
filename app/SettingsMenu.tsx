@@ -2,16 +2,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface SettingsMenuProps {
@@ -38,12 +38,20 @@ export default function SettingsMenu({
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
-  const fetchUserInfo = async (currentAccess: string) => {
+const fetchUserInfo = async (currentAccess: string) => {
     if (!currentAccess) return;
     setLoadingUser(true);
     try {
-      const res = await fetch('https://auth.tesla.cn/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${currentAccess}` }
+      // 👇 关键改动 1：在网址后面偷偷加一个随机的时间戳，让系统认为每次请求的都是一个"新"网址
+      const timestamp = new Date().getTime();
+      const res = await fetch(`https://auth.tesla.cn/oauth2/v3/userinfo?_t=${timestamp}`, {
+        headers: { 
+          Authorization: `Bearer ${currentAccess}`,
+          // 👇 关键改动 2：强制要求服务器和手机本地都不许使用缓存
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       const data = await res.json();
       
