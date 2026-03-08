@@ -38,23 +38,53 @@ export default function SettingsMenu({
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
-const fetchUserInfo = async (currentAccess: string) => {
-    if (!currentAccess) return;
+  // 👇 重写后的核心函数：先强制刷新 token，再拉取最新资料（彻底解决 Tesla 服务器缓存）
+  const fetchUserInfo = async (currentRefresh: string) => {
+    if (!currentRefresh) return;
+    
     setLoadingUser(true);
+    
     try {
-      // 👇 关键改动 1：在网址后面偷偷加一个随机的时间戳，让系统认为每次请求的都是一个"新"网址
+      console.log('🔄 正在用 refreshToken 强制刷新 accessToken...');
+
+      // 第一步：强制刷新 token（Tesla 服务器会返回最新账号状态）
+      const refreshRes = await fetch('https://auth.tesla.cn/oauth2/v3/token', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          client_id: 'ownerapi',           // ← 如果你登录时用了其他 client_id（比如 tesla-app），请改这里
+          refresh_token: currentRefresh,
+          scope: 'openid email offline_access'
+        })
+      });
+
+      const refreshData = await refreshRes.json();
+      
+      if (!refreshRes.ok) {
+        throw new Error('刷新 token 失败: ' + (refreshData.error_description || refreshData.error || '未知错误'));
+      }
+
+      const newAccessToken = refreshData.access_token;
+      console.log('✅ Token 刷新成功！使用新 token 拉取最新资料');
+
+      // 第二步：用刚刚刷新的新 token 去拉 userinfo（必能拿到最新名字/头像）
       const timestamp = new Date().getTime();
       const res = await fetch(`https://auth.tesla.cn/oauth2/v3/userinfo?_t=${timestamp}`, {
         headers: { 
-          Authorization: `Bearer ${currentAccess}`,
-          // 👇 关键改动 2：强制要求服务器和手机本地都不许使用缓存
+          Authorization: `Bearer ${newAccessToken}`,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
         }
       });
+
       const data = await res.json();
-      
+      console.log('📋 userinfo 返回数据:', data);   // ← 调试用！改名字后看这里 name 是否更新
+
       if (res.ok) {
         setUserInfo({
           full_name: data.name || data.full_name || 'Tesla 车主',
@@ -68,24 +98,29 @@ const fetchUserInfo = async (currentAccess: string) => {
           profile_image_url: 'https://www.gravatar.com/avatar/0?d=mp&f=y'
         });
       }
-    } catch (error) {
-      setUserInfo({ full_name: 'Tesla 车主', email: '网络请求失败', profile_image_url: 'https://www.gravatar.com/avatar/0?d=mp' });
+    } catch (error: any) {
+      console.error('❌ 获取用户资料失败:', error.message);
+      setUserInfo({ 
+        full_name: 'Tesla 车主', 
+        email: '网络请求失败，请重新登录',
+        profile_image_url: 'https://www.gravatar.com/avatar/0?d=mp'
+      });
     } finally {
       setLoadingUser(false);
     }
   };
 
-useEffect(() => {
+  useEffect(() => {
     if (visible) {
-      if (accessToken) {
-        // 去掉了 !userInfo 的限制，现在每次打开面板都会拉取最新数据
-        fetchUserInfo(accessToken);
+      if (refreshToken) {
+        // 每次打开菜单都强制刷新 token + 拉最新资料
+        fetchUserInfo(refreshToken);
       } else {
         setUserInfo({ full_name: '同步中...', email: '请稍后重试' });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, accessToken]);
+  }, [visible, refreshToken]);
 
   const handleOpenMap = () => {
     if (!vehicleId) {
@@ -98,29 +133,26 @@ useEffect(() => {
   return (
     <Modal 
       animationType="slide" 
-      transparent={Platform.OS === 'android'} // Android 保持透明背景以实现半屏，iOS 使用 pageSheet
+      transparent={Platform.OS === 'android'}
       visible={visible} 
       onRequestClose={onClose}
-      // 👇 这里是关键：在 iOS 上使用 formSheet/pageSheet 可以原生支持下拉关闭和类似图二的阴影层级
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           
-          {/* 👇 顶部小灰线拖拽指示器 */}
+          {/* 顶部小灰线拖拽指示器 */}
           <View style={styles.dragIndicatorContainer}>
             <View style={styles.dragIndicator} />
           </View>
 
           <View style={styles.modalHeader}>
-            {/* 左侧下拉按钮 (仿图二样式) */}
             <TouchableOpacity onPress={onClose} style={styles.closeButtonLeft}>
                <Ionicons name="chevron-down" size={24} color="#fff" />
             </TouchableOpacity>
             
             <Text style={styles.modalTitle}>账号与设置</Text>
             
-            {/* 右侧占位，保证标题绝对居中 */}
             <View style={{ width: 40 }} />
           </View>
 
@@ -147,7 +179,6 @@ useEffect(() => {
                   )}
                 </View>
                 
-                {/* 👇 调整了列表项的圆角和边距，更贴近图二独立卡片的感觉 */}
                 <View style={styles.settingsList}>
                   <TouchableOpacity style={styles.settingItem}>
                     <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
@@ -187,7 +218,6 @@ useEffect(() => {
 }
 
 const styles = StyleSheet.create({
-  // iOS 上的 pageSheet 自带背景，所以这里把背景改成了纯黑，以契合整体 UI
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: Platform.OS === 'ios' ? '#111' : 'rgba(0, 0, 0, 0.6)' },
   modalContent: { 
     backgroundColor: '#111', 
@@ -200,7 +230,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40 
   },
   
-  // 👇 顶部拖拽小灰线样式
   dragIndicatorContainer: {
     alignItems: 'center',
     paddingVertical: 8,
@@ -209,7 +238,7 @@ const styles = StyleSheet.create({
   dragIndicator: {
     width: 40,
     height: 4,
-    backgroundColor: '#444', // 深灰线条
+    backgroundColor: '#444',
     borderRadius: 2,
   },
 
@@ -221,7 +250,6 @@ const styles = StyleSheet.create({
     marginBottom: 20 
   },
   
-  // 👇 改为左侧方形深灰背景按钮
   closeButtonLeft: { 
     width: 40,
     height: 40,
@@ -250,16 +278,15 @@ const styles = StyleSheet.create({
   userName: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 5 },
   userEmail: { color: '#888', fontSize: 13, textAlign: 'center', paddingHorizontal: 10 },
   
-  // 👇 列表样式调整：去掉副标题，间距更大，接近官方菜单
   settingsList: { marginBottom: 30 },
   settingItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#1C1C1E', // 独立卡片背景
+    backgroundColor: '#1C1C1E',
     paddingVertical: 18, 
     paddingHorizontal: 15, 
     borderRadius: 12,
-    marginBottom: 10 // 卡片之间有缝隙
+    marginBottom: 10
   },
   settingItemNoBorder: {
     marginBottom: 0
@@ -268,7 +295,6 @@ const styles = StyleSheet.create({
   settingTextContainer: { flex: 1, justifyContent: 'center' },
   settingTextPrimary: { color: '#fff', fontSize: 15, fontWeight: '400' },
   
-  // 👇 退出按钮改为红边黑底，更克制
   logoutButton: { 
     backgroundColor: 'transparent', 
     borderWidth: 1, 
