@@ -285,16 +285,16 @@ export default function Layout() {
   };
 
   return (
-    // 🌟 顶层背景修改为 #111111
-    <View style={{ flex: 1, backgroundColor: '#111111' }}>
+    // 🌟 顶层背景修改为 Gemini 的 #131314
+    <View style={{ flex: 1, backgroundColor: '#131314' }}>
       <StatusBar style="light" />
 
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
-              {/* 🌟 3D 画布的背景颜色修改为 #111111 */}
-              <color attach="background" args={['#111111']} />
+              {/* 🌟 3D 画布的背景颜色修改为 #131314 */}
+              <color attach="background" args={['#131314']} />
               <ambientLight intensity={1.5} />
               <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
               <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
@@ -347,7 +347,8 @@ export default function Layout() {
             </View>
 
             <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
-              <Ionicons name="menu" size={26} color="#fff" />
+              {/* 🌟 图标颜色调整为柔和白 */}
+              <Ionicons name="menu" size={26} color="#E3E3E3" />
             </TouchableOpacity>
           </View>
 
@@ -431,31 +432,37 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-  // 🌟 主容器背景修改为 #111111
-  container: { flex: 1, backgroundColor: '#111111' },
-  // 🌟 图片区域背景修改为 #111111
-  imageContainer: { height: 260, backgroundColor: '#111111', position: 'relative' },
+  // 🌟 主容器背景修改为 Gemini 的 #131314
+  container: { flex: 1, backgroundColor: '#131314' },
+  // 🌟 图片区域背景修改为 #131314
+  imageContainer: { height: 260, backgroundColor: '#131314', position: 'relative' },
   canvas: { ...StyleSheet.absoluteFillObject },
   FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
-  statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
-  statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
+  // 🌟 状态徽章背景改为带透明度的悬浮灰
+  statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(30, 31, 34, 0.8)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
+  // 🌟 主文字颜色调整为护眼灰白 #E3E3E3
+  statusText: { color: '#E3E3E3', fontSize: 14, fontWeight: '500' },
   menuIconContainer: { position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 8 },
   contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#E3E3E3' },
   refreshIcon: { fontSize: 14, opacity: 0.6 },
-  rangeText: { fontSize: 22, fontFamily: 'Courier', color: '#fff' },
-  subText: { fontSize: 12, color: '#888', marginTop: 4 },
+  rangeText: { fontSize: 22, fontFamily: 'Courier', color: '#E3E3E3' },
+  // 🌟 次要文字调整为 Google 规范的 #C4C7C5
+  subText: { fontSize: 12, color: '#C4C7C5', marginTop: 4 },
   infoGrid: { flexDirection: 'row' },
   infoCol: { flex: 1, alignItems: 'center' },
-  tempText: { fontSize: 32, fontFamily: 'Courier', color: '#fff' },
-  locationText: { fontSize: 16, color: '#fff', paddingBottom: 6 },
+  tempText: { fontSize: 32, fontFamily: 'Courier', color: '#E3E3E3' },
+  locationText: { fontSize: 16, color: '#E3E3E3', paddingBottom: 6 },
   controls: { gap: 10 },
-  buttonDark: { backgroundColor: '#1C1C1E', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  buttonAuthRed: { backgroundColor: '#E31937', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
-  // 🌟 分割线颜色降低亮度，匹配 SettingsMenu 的暗纹风格
-  tokenSection: { borderTopWidth: 1, borderTopColor: '#262626', paddingTop: 16, alignItems: 'center' },
-  authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
+  // 🌟 按钮颜色改为悬浮深灰 #1E1F22
+  buttonDark: { backgroundColor: '#1E1F22', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  // 🌟 绿色按钮也适配 Google Material 暗色绿 #81C995 以降低刺眼感
+  buttonGreen: { backgroundColor: '#81C995', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  buttonText: { color: '#E3E3E3', fontSize: 16, fontWeight: '500' },
+  // 🌟 红色按钮适配 Material 暗色红 #B3261E
+  buttonAuthRed: { backgroundColor: '#B3261E', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
+  // 🌟 分割线颜色调整为 Material 3 的描边灰 #444746
+  tokenSection: { borderTopWidth: 1, borderTopColor: '#444746', paddingTop: 16, alignItems: 'center' },
+  authDesc: { color: '#C4C7C5', fontSize: 13, marginBottom: 12 },
 });
