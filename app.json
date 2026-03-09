@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "dmittapp",
-    "slug": "dmittapp",
+    "name": "刺猬Claw",
+    "slug": "ciwei-claw",
     "version": "1.0.0",
-    "scheme": "dmittapp",
+    "scheme": "ciwei-claw",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
