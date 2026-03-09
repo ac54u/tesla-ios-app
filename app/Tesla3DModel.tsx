@@ -22,7 +22,6 @@ export function HudOverlay({ actions }: { actions: any }) {
 
   useEffect(() => {
     hudEmitter.subscribe((payload: any) => {
-      // 这里的坐标已经经过了底层的 NaN 安全过滤，绝对不会再让 Animated 崩溃
       if (payload.frunk) frunkPos.setValue({ x: payload.frunk.x - 45, y: payload.frunk.y - 15 });
       if (payload.trunk) trunkPos.setValue({ x: payload.trunk.x - 45, y: payload.trunk.y - 15 });
       if (payload.door) doorPos.setValue({ x: payload.door.x - 45, y: payload.door.y - 15 });
@@ -66,19 +65,15 @@ const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
       vec.current.copy(cachedWorldPos.current[item.name]);
       vec.current.project(camera);
 
+      // 🌟 终极数学防御：如果是在相机背面，或者是被引擎算崩的 NaN，统统扔到屏幕外！
       const isBehindCamera = vec.current.z > 1;
-      let px = (vec.current.x * 0.5 + 0.5) * size.width;
-      let py = (vec.current.y * -0.5 + 0.5) * size.height;
-
-      // 🌟 终极防御：绝不允许 NaN（非数字）毒药流入 React Native 动画引擎！
-      if (isNaN(px) || isNaN(py)) {
-        px = -1000;
-        py = -1000;
-      }
+      const px = (vec.current.x * 0.5 + 0.5) * size.width;
+      const py = (vec.current.y * -0.5 + 0.5) * size.height;
+      const isValid = Number.isFinite(px) && Number.isFinite(py);
 
       payload[item.name] = {
-        x: isBehindCamera ? -1000 : px,
-        y: isBehindCamera ? -1000 : py,
+        x: (isBehindCamera || !isValid) ? -1000 : px,
+        y: (isBehindCamera || !isValid) ? -1000 : py,
       };
     });
     hudEmitter.emit(payload);
