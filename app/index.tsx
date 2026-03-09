@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { Audio } from 'expo-av';
-import { Stack } from 'expo-router'; 
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
@@ -20,7 +19,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-// 🌟 引入 useSafeAreaInsets，抛弃原生的 SafeAreaView
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SettingsMenu from './SettingsMenu';
@@ -28,7 +26,6 @@ import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
 import ChargingMap from './ChargingMap';
 
 export default function Layout() {
-  // 🌟 获取安全区域的像素高度
   const insets = useSafeAreaInsets();
 
   const [refreshToken, setRefreshToken] = useState('');
@@ -288,13 +285,10 @@ export default function Layout() {
   };
 
   return (
-    // 🌟 最外层容器：强制全屏并设定背景色
     <View style={styles.rootContainer}>
-      
-      <Stack.Screen options={{ headerShown: false, contentStyle: { backgroundColor: '#131314' } }} />
       <StatusBar style="light" />
 
-      {/* 🌟 核心：普通 View，应用动态计算的上下边距，不留系统原生底色的机会 */}
+      {/* 🌟 insets.top 和 bottom 在这里正确撑开，外层的 #131314 终于能透出来了 */}
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           
@@ -357,7 +351,13 @@ export default function Layout() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer} bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={styles.contentContainer} 
+            bounces={false} 
+            keyboardShouldPersistTaps="handled" 
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.headerRow}>
               <TouchableOpacity activeOpacity={0.6} onPress={() => refreshToken ? fetchCarData() : undefined} disabled={!refreshToken}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -435,10 +435,8 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-  // 🌟 最外层根容器样式
   rootContainer: { flex: 1, backgroundColor: '#131314' },
-  // 🌟 内容容器样式，不再设置 backgroundColor 避免重叠
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#131314' },
   
   imageContainer: { 
     height: 260, 
