@@ -7,14 +7,15 @@ import {
   Image,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch, // 🌟 引入 Switch 组件
+  Switch, 
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+// 🌟 引入 insets 替代 SafeAreaView
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,17 +47,17 @@ export default function SettingsMenu({
   onOpenMap
 }: SettingsMenuProps) {
 
+  // 🌟 获取安全距离
+  const insets = useSafeAreaInsets();
+
   const [showModal, setShowModal] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
-  // 🌟 新增：控制二级“账户页面”的状态和动画
   const [showAccountPage, setShowAccountPage] = useState(false);
   const accountSlideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   
-  // 剪贴板开关状态
   const [clipboardEnabled, setClipboardEnabled] = useState(true);
 
-  // 一级菜单的侧滑全屏动画
   useEffect(() => {
     if (visible) {
       setShowModal(true);
@@ -72,13 +73,11 @@ export default function SettingsMenu({
         useNativeDriver: true,
       }).start(() => {
         setShowModal(false);
-        // 菜单完全关闭时，重置二级页面状态
         setShowAccountPage(false); 
       });
     }
   }, [visible, slideAnim]);
 
-  // 🌟 二级账户页面的侧滑动画
   useEffect(() => {
     Animated.timing(accountSlideAnim, {
       toValue: showAccountPage ? 0 : SCREEN_WIDTH,
@@ -87,7 +86,6 @@ export default function SettingsMenu({
     }).start();
   }, [showAccountPage, accountSlideAnim]);
 
-  // 辅助渲染二级菜单列表项的方法
   const renderAccountMenuItem = (iconName: keyof typeof Ionicons.glyphMap, title: string) => (
     <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
       <Ionicons name={iconName} size={22} color="#C4C7C5" style={styles.settingIcon} />
@@ -109,7 +107,8 @@ export default function SettingsMenu({
         
         {/* ======================= 一级菜单 ======================= */}
         <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
-          <SafeAreaView style={{ flex: 1 }}>
+          {/* 🌟 核心修改：普通 View 加上动态上下边距 */}
+          <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
             
             <View style={styles.header}>
               <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
@@ -129,7 +128,6 @@ export default function SettingsMenu({
                 </View>
               ) : (
                 <View>
-                  {/* 🌟 点击打开二级页面 */}
                   <TouchableOpacity style={styles.profileSection} activeOpacity={0.8} onPress={() => setShowAccountPage(true)}>
                     <Image
                       source={{
@@ -176,33 +174,30 @@ export default function SettingsMenu({
                       <Ionicons name="chevron-forward" size={20} color="#8E918F" />
                     </TouchableOpacity>
                   </View>
-                  {/* 🌟 原本这里的退出按钮已移除，转移到二级页面 */}
                 </View>
               )}
             </ScrollView>
-          </SafeAreaView>
+          </View>
         </Animated.View>
 
         {/* ======================= 二级页面 (账户信息) ======================= */}
         <Animated.View 
           style={[styles.accountPageContainer, { transform: [{ translateX: accountSlideAnim }] }]}
         >
-          <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
+          {/* 🌟 核心修改：普通 View 加上动态上下边距 */}
+          <View style={{ flex: 1, justifyContent: 'space-between', paddingTop: insets.top, paddingBottom: insets.bottom }}>
             
             <View>
-              {/* 二级页面导航栏：带返回键的居中标题 */}
               <View style={styles.subHeader}>
                 <TouchableOpacity onPress={() => setShowAccountPage(false)} style={styles.subHeaderLeftBtn}>
                   <Ionicons name="chevron-back" size={28} color="#E3E3E3" />
                 </TouchableOpacity>
                 <Text style={styles.subHeaderTitle}>{accountName || 'Tesla 车主'}</Text>
-                {/* 占位符保证标题绝对居中 */}
                 <View style={styles.subHeaderRightPlaceholder} />
               </View>
 
               <ScrollView style={styles.subModalBody} showsVerticalScrollIndicator={false} bounces={false}>
                 
-                {/* 居中大头像 */}
                 <View style={styles.centerProfileSection}>
                   <View style={styles.centerAvatarWrapper}>
                     <Image
@@ -218,7 +213,6 @@ export default function SettingsMenu({
                   </View>
                 </View>
 
-                {/* 各项设置列表 */}
                 <View style={styles.settingsList}>
                   {renderAccountMenuItem('id-card-outline', '账户信息')}
                   {renderAccountMenuItem('notifications-outline', '通知')}
@@ -229,7 +223,6 @@ export default function SettingsMenu({
                   {renderAccountMenuItem('receipt-outline', '开发票')}
                 </View>
 
-                {/* 开关设置 */}
                 <View style={styles.switchRow}>
                   <View style={styles.switchTextContainer}>
                     <Text style={styles.settingTextPrimary}>启动时读取剪贴板</Text>
@@ -246,12 +239,11 @@ export default function SettingsMenu({
               </ScrollView>
             </View>
 
-            {/* 🌟 最底部的纯文本登出按钮 */}
             <TouchableOpacity style={styles.bottomLogoutBtn} onPress={onLogout} activeOpacity={0.6}>
               <Text style={styles.bottomLogoutText}>登出</Text>
             </TouchableOpacity>
 
-          </SafeAreaView>
+          </View>
         </Animated.View>
 
       </View>
@@ -363,10 +355,9 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
 
-  // ===================== 二级页面专属样式 =====================
   accountPageContainer: {
-    ...StyleSheet.absoluteFillObject, // 绝对定位，覆盖在原菜单之上
-    backgroundColor: '#131314', // 同步护眼深灰背景
+    ...StyleSheet.absoluteFillObject, 
+    backgroundColor: '#131314', 
     zIndex: 10,
   },
   subHeader: {
@@ -389,7 +380,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subHeaderRightPlaceholder: {
-    width: 40, // 用来保持中间的标题绝对居中
+    width: 40, 
   },
   subModalBody: {
     paddingHorizontal: 24,
@@ -412,14 +403,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#444746', // 深灰色编辑底圈
+    backgroundColor: '#444746', 
     width: 26,
     height: 26,
     borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#131314', // 挖空边框效果
+    borderColor: '#131314', 
   },
   switchRow: {
     flexDirection: 'row',
