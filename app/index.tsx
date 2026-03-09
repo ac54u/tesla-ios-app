@@ -1,13 +1,12 @@
 // app/index.tsx
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Center, OrbitControls, useGLTF } from '@react-three/drei/native';
+import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Linking,
@@ -19,32 +18,10 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import SettingsMenu from './SettingsMenu'; // 👈 已经删除了容易闪退的 ChargingMap 引入
 
-interface Tesla3DModelProps {
-  setModelLoaded: (loaded: boolean) => void;
-}
-
-function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
-  const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
-  useEffect(() => { setModelLoaded(true); }, [setModelLoaded]);
-  return (
-    <group position={[0, -0.5, 0]}>
-      <Center>
-        <primitive object={scene} scale={1.65} rotation={[0, -Math.PI / 2.5, 0]} />
-      </Center>
-    </group>
-  );
-}
-
-function FallbackLoader() {
-  return (
-    <View style={styles.loaderContainer}>
-      <ActivityIndicator size="large" color="#fff" />
-      <Text style={{ color: '#888', marginTop: 10 }}>模型解析中...</Text>
-    </View>
-  );
-}
+import SettingsMenu from './SettingsMenu';
+// 🌟 引入我们刚刚抽离的 3D 模型组件和加载动画
+import Tesla3DModel, { FallbackLoader } from './Tesla3DModel';
 
 export default function Layout() {
   const [refreshToken, setRefreshToken] = useState('');
@@ -156,7 +133,6 @@ export default function Layout() {
 
           await AsyncStorage.setItem('teslaRefreshToken', newToken);
           
-          // 👇 彻底删除了烦人的“登录成功”弹窗，实现全官方无感登录体验
           fetchCarData(newToken);
         }
       }
@@ -324,13 +300,11 @@ export default function Layout() {
             handleTeslaOAuthLogin();
           }}
           onLogout={handleResetToken}
-          // 👇 直接调用特斯拉官方超充地图网页，告别原生底层的闪退问题！
           onOpenMap={() => {
             WebBrowser.openBrowserAsync('https://www.tesla.cn/findus?filters=supercharger');
           }}
         />
 
-        {/* 👇 已经彻底删除了 <ChargingMap /> 标签 */}
       </SafeAreaView>
     </View>
   );
@@ -341,7 +315,6 @@ const styles = StyleSheet.create({
   imageContainer: { height: 260, backgroundColor: '#000', position: 'relative' },
   canvas: { ...StyleSheet.absoluteFillObject },
   FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
   statusText: { color: '#fff', fontSize: 14, fontWeight: '500' },
   menuIconContainer: { position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 8 },
