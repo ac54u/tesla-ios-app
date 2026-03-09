@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { Audio } from 'expo-av';
+// 🌟 核心魔法组件：导入 Stack，用来穿透修改底层背景色
+import { Stack } from 'expo-router'; 
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
@@ -11,7 +13,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Linking,
-  Modal, // 🌟 确保引入了 Modal
+  Modal, 
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,16 +21,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-// 🌟 1. 修改导入：移除 SafeAreaView，导入 useSafeAreaInsets
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SettingsMenu from './SettingsMenu';
 import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
-// 🌟 引入刚刚写好的充电地图组件
 import ChargingMap from './ChargingMap';
 
 export default function Layout() {
-  // 🌟 2. 获取安全区域 Insets
   const insets = useSafeAreaInsets();
 
   const [refreshToken, setRefreshToken] = useState('');
@@ -42,7 +41,6 @@ export default function Layout() {
   const [modelLoaded, setModelLoaded] = useState(false);
 
   const [menuVisible, setMenuVisible] = useState(false);
-  // 🌟 新增：控制充电地图显示/隐藏的开关
   const [mapVisible, setMapVisible] = useState(false);
   
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
@@ -289,16 +287,17 @@ export default function Layout() {
   };
 
   return (
-    // 🌟 顶层背景修改为 Gemini 的 #131314
     <View style={{ flex: 1, backgroundColor: '#131314' }}>
+      
+      {/* 🌟 核心魔法：向 Expo 隐藏的父级发送配置，瓦解上下黑边！ */}
+      <Stack.Screen options={{ headerShown: false, contentStyle: { backgroundColor: '#131314' } }} />
+
       <StatusBar style="light" />
 
-      {/* 🌟 3. 替换 SafeAreaView 为普通 View，并应用 insets */}
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
-              {/* 🌟 3D 画布的背景颜色修改为 #131314 */}
               <color attach="background" args={['#131314']} />
               <ambientLight intensity={1.5} />
               <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
@@ -352,7 +351,6 @@ export default function Layout() {
             </View>
 
             <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
-              {/* 🌟 图标颜色调整为柔和白 */}
               <Ionicons name="menu" size={26} color="#E3E3E3" />
             </TouchableOpacity>
           </View>
@@ -400,7 +398,6 @@ export default function Layout() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* 侧边菜单 */}
         <SettingsMenu
           visible={menuVisible}
           onClose={() => setMenuVisible(false)}
@@ -420,7 +417,6 @@ export default function Layout() {
           }}
         />
 
-        {/* 🌟 挂载全局地图弹窗组件 */}
         <Modal
           visible={mapVisible}
           animationType="slide"
@@ -437,15 +433,11 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-  // 🌟 主容器背景修改为 Gemini 的 #131314
   container: { flex: 1, backgroundColor: '#131314' },
-  // 🌟 图片区域背景修改为 #131314
   imageContainer: { height: 260, backgroundColor: '#131314', position: 'relative' },
   canvas: { ...StyleSheet.absoluteFillObject },
   FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
-  // 🌟 状态徽章背景改为带透明度的悬浮灰
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(30, 31, 34, 0.8)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
-  // 🌟 主文字颜色调整为护眼灰白 #E3E3E3
   statusText: { color: '#E3E3E3', fontSize: 14, fontWeight: '500' },
   menuIconContainer: { position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 8 },
   contentContainer: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'space-between' },
@@ -453,21 +445,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#E3E3E3' },
   refreshIcon: { fontSize: 14, opacity: 0.6 },
   rangeText: { fontSize: 22, fontFamily: 'Courier', color: '#E3E3E3' },
-  // 🌟 次要文字调整为 Google 规范的 #C4C7C5
   subText: { fontSize: 12, color: '#C4C7C5', marginTop: 4 },
   infoGrid: { flexDirection: 'row' },
   infoCol: { flex: 1, alignItems: 'center' },
   tempText: { fontSize: 32, fontFamily: 'Courier', color: '#E3E3E3' },
   locationText: { fontSize: 16, color: '#E3E3E3', paddingBottom: 6 },
   controls: { gap: 10 },
-  // 🌟 按钮颜色改为悬浮深灰 #1E1F22
   buttonDark: { backgroundColor: '#1E1F22', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  // 🌟 绿色按钮也适配 Google Material 暗色绿 #81C995 以降低刺眼感
   buttonGreen: { backgroundColor: '#81C995', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonText: { color: '#E3E3E3', fontSize: 16, fontWeight: '500' },
-  // 🌟 红色按钮适配 Material 暗色红 #B3261E
   buttonAuthRed: { backgroundColor: '#B3261E', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
-  // 🌟 分割线颜色调整为 Material 3 的描边灰 #444746
   tokenSection: { borderTopWidth: 1, borderTopColor: '#444746', paddingTop: 16, alignItems: 'center' },
   authDesc: { color: '#C4C7C5', fontSize: 13, marginBottom: 12 },
 });
