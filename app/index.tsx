@@ -5,6 +5,8 @@ import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
+// 🌟 引入 Audio 模块
+import { Audio } from 'expo-av';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   Alert,
@@ -36,11 +38,30 @@ export default function Layout() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
-  // 🌟 核心：新增车辆硬件状态的 State
   const [frunkOpen, setFrunkOpen] = useState(false);
   const [trunkOpen, setTrunkOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(true);
   const [chargePortOpen, setChargePortOpen] = useState(false);
+
+  // 🌟 核心：播放本地锁车音效的函数
+  const playLockSound = async () => {
+    try {
+      // 加载本地 assets 里的 lock.wav 文件
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/lock.wav')
+      );
+      await sound.playAsync();
+      
+      // 播放完毕后自动从内存中卸载，防止内存泄漏
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.log('播放音效失败:', error);
+    }
+  };
 
   const fetchAccessToken = async (currentToken = refreshToken) => {
     if (!currentToken) return null;
@@ -112,11 +133,10 @@ export default function Layout() {
       const chargeState = carData.response?.charge_state;
       const climateState = carData.response?.climate_state;
       const driveState = carData.response?.drive_state;
-      const vehicleState = carData.response?.vehicle_state; // 🌟 获取车门、前后备箱状态
+      const vehicleState = carData.response?.vehicle_state; 
       
       if (chargeState) {
         setRange(Math.round(chargeState.battery_range).toString());
-        // 提取充电口状态
         setChargePortOpen(chargeState.charge_port_door_open);
       }
       
@@ -128,10 +148,9 @@ export default function Layout() {
         setLocationText('已更新最新位置');
       }
 
-      // 🌟 解析并提取前后备箱和车锁的状态
       if (vehicleState) {
-        setFrunkOpen(vehicleState.ft > 0); // ft = front trunk, 大于 0 就是开着
-        setTrunkOpen(vehicleState.rt > 0); // rt = rear trunk
+        setFrunkOpen(vehicleState.ft > 0); 
+        setTrunkOpen(vehicleState.rt > 0); 
         setIsLocked(vehicleState.locked);
       }
 
@@ -227,7 +246,12 @@ export default function Layout() {
       }
 
       if (res.ok) {
-        // 🌟 指令发送成功后，给用户一点提示，并立刻去刷新车辆的最新状态
+        // 🌟 如果执行的是“锁车”指令，并且 API 返回成功，立刻播放音效！
+        if (endpoint === 'door_lock') {
+          playLockSound();
+        }
+
+        Alert.alert('成功', '指令已发送');
         setTimeout(() => fetchCarData(), 2000); 
       } else {
         Alert.alert('指令失败', `状态码: ${res.status}`);
@@ -272,7 +296,6 @@ export default function Layout() {
 
             {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
             
-            {/* 🌟 核心：全动态化 HUD 交互 */}
             {!!refreshToken && (
               <HudOverlay 
                 labels={{
@@ -282,12 +305,9 @@ export default function Layout() {
                   charge: chargePortOpen ? '关闭充电口' : '⚡ 充电口'
                 }}
                 actions={{
-                  // actuate_trunk 会自动根据当前状态反转
                   frunk: () => sendCommand('actuate_trunk', { which_trunk: 'front' }),
                   trunk: () => sendCommand('actuate_trunk', { which_trunk: 'rear' }),
-                  // 智能判断车门状态发送锁车或解锁
                   door: () => sendCommand(isLocked ? 'door_unlock' : 'door_lock'),
-                  // 智能判断充电口状态
                   charge: () => sendCommand(chargePortOpen ? 'charge_port_door_close' : 'charge_port_door_open'),
                 }} 
               />
