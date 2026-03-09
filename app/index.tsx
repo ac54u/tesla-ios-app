@@ -226,7 +226,6 @@ export default function Layout() {
               <directionalLight position={[0, 5, -10]} intensity={2.5} color="white" />
               <directionalLight position={[0, 10, 0]} intensity={1.5} color="white" />
               <Suspense fallback={null}>
-                {/* 🌟 传入 showControls 状态，只有拥有 refreshToken 时才告诉 3D 引擎显示锚点 */}
                 <Tesla3DModel 
                   setModelLoaded={setModelLoaded} 
                   showControls={!!refreshToken} 
@@ -249,13 +248,13 @@ export default function Layout() {
 
             {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
             
-            {/* 🌟 只有在已登录状态下，才渲染 2D 交互按钮层 */}
+            {/* 🌟 核心：将 3D HUD 按钮与真实的 Fleet API 指令完全绑定！ */}
             {!!refreshToken && (
               <HudOverlay actions={{
-                frunk: () => Alert.alert('前备箱', '正在发送开启指令...'),
-                trunk: () => Alert.alert('后备箱', '正在发送开启指令...'),
-                door: () => Alert.alert('车门', '车辆已解锁'),
-                charge: () => Alert.alert('充电口', '正在打开充电口盖'),
+                frunk: () => sendCommand('actuate_trunk', { which_trunk: 'front' }),
+                trunk: () => sendCommand('actuate_trunk', { which_trunk: 'rear' }),
+                door: () => sendCommand('door_unlock'),
+                charge: () => sendCommand('charge_port_door_open'),
               }} />
             )}
 
