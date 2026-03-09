@@ -48,47 +48,48 @@ export default function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
 
   return (
     <group position={[0, -0.5, 0]}>
-      <Center>
-        <group scale={1.65} rotation={[0, -Math.PI / 2.5, 0]}>
-          
+      <group scale={1.65} rotation={[0, -Math.PI / 2.5, 0]}>
+        
+        {/* 🌟 核心修复：让 Center 只包裹模型，把它强行按回 0,0,0 点！🌟 */}
+        <Center>
           <primitive object={scene} />
+        </Center>
 
-          {/* 🌟 极简官方风 HUD，精确锚定在车壳表面 🌟 */}
-          
-          {/* 前备箱盖表面 */}
-          <TeslaLineHud 
-            position={[0, 0.35, 1.2]} 
-            height={0.35}
-            label="打开前备箱"
-            action={() => Alert.alert('前备箱', '正在开启...')} 
-          />
-          
-          {/* 后备箱盖表面 */}
-          <TeslaLineHud 
-            position={[0, 0.45, -1.3]} 
-            height={0.4}
-            label="打开后备箱"
-            action={() => Alert.alert('后备箱', '正在开启...')} 
-          />
+        {/* 🌟 极简官方风 HUD，现在它们绝对会死死贴在车壳上了 🌟 */}
+        
+        {/* 前备箱盖表面 */}
+        <TeslaLineHud 
+          position={[0, 0.35, 1.2]} 
+          height={0.35}
+          label="打开前备箱"
+          action={() => Alert.alert('前备箱', '正在开启...')} 
+        />
+        
+        {/* 后备箱盖表面 */}
+        <TeslaLineHud 
+          position={[0, 0.45, -1.3]} 
+          height={0.4}
+          label="打开后备箱"
+          action={() => Alert.alert('后备箱', '正在开启...')} 
+        />
 
-          {/* 左侧车门表面 */}
-          <TeslaLineHud 
-            position={[0.85, 0.4, 0.1]} 
-            height={0.4}
-            label="解锁"
-            action={() => Alert.alert('车门', '车辆已解锁')} 
-          />
+        {/* 左侧车门表面 */}
+        <TeslaLineHud 
+          position={[0.85, 0.4, 0.1]} 
+          height={0.4}
+          label="解锁"
+          action={() => Alert.alert('车门', '车辆已解锁')} 
+        />
 
-          {/* 左后充电口表面 */}
-          <TeslaLineHud 
-            position={[0.9, 0.4, -0.9]} 
-            height={0.3}
-            label="充电口"
-            action={() => Alert.alert('充电口', '正在打开充电口盖')} 
-          />
+        {/* 左后充电口表面 */}
+        <TeslaLineHud 
+          position={[0.9, 0.4, -0.9]} 
+          height={0.3}
+          label="充电口"
+          action={() => Alert.alert('充电口', '正在打开充电口盖')} 
+        />
 
-        </group>
-      </Center>
+      </group>
     </group>
   );
 }
