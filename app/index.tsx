@@ -19,7 +19,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// 🌟 1. 修改导入：移除 SafeAreaView，导入 useSafeAreaInsets
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SettingsMenu from './SettingsMenu';
 import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
@@ -27,6 +28,9 @@ import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
 import ChargingMap from './ChargingMap';
 
 export default function Layout() {
+  // 🌟 2. 获取安全区域 Insets
+  const insets = useSafeAreaInsets();
+
   const [refreshToken, setRefreshToken] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [vehicleId, setVehicleId] = useState('');
@@ -289,7 +293,8 @@ export default function Layout() {
     <View style={{ flex: 1, backgroundColor: '#131314' }}>
       <StatusBar style="light" />
 
-      <SafeAreaView style={styles.container}>
+      {/* 🌟 3. 替换 SafeAreaView 为普通 View，并应用 insets */}
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
@@ -426,7 +431,7 @@ export default function Layout() {
           <ChargingMap onClose={() => setMapVisible(false)} />
         </Modal>
 
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
