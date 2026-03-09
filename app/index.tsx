@@ -13,6 +13,7 @@ import {
   Linking,
   Modal // 🌟 确保引入了 Modal
   ,
+
   Platform,
   ScrollView,
   StyleSheet,
@@ -227,24 +228,37 @@ export default function Layout() {
   };
 
   const handleResetToken = () => {
-    Alert.alert('退出登录', '确定要退出当前账号并清除数据吗？', [
+    Alert.alert('退出登录', '确定要退出当前账号并清除所有本地缓存吗？', [
       { text: '取消', style: 'cancel' },
       { 
         text: '退出', 
         style: 'destructive', 
         onPress: async () => {
-          await AsyncStorage.removeItem('teslaRefreshToken');
+          // 🌟 1. 物理拔管：直接动用 clear() 核弹，清空 App 在手机里的所有 AsyncStorage 缓存！
+          await AsyncStorage.clear();
+          
+          // 🌟 2. 内存拔管：把当前所有 State 瞬间打回原形
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
           setMenuVisible(false); 
+          
+          // 重置 UI 显示文字
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
+          setLocationText('定位获取中...');
           
+          // 重置账号信息
           setAccountName('未登录');
           setAccountAvatar('');
           setAccountEmail('');
+
+          // 🌟 3. 重置所有车辆硬件状态（防止下个人登录前，UI上还留着上个人的车门状态）
+          setFrunkOpen(false);
+          setTrunkOpen(false);
+          setIsLocked(true);
+          setChargePortOpen(false);
         }
       }
     ]);
