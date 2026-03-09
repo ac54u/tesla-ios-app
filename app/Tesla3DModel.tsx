@@ -16,7 +16,8 @@ export const hudEmitter = {
   subscribe(fn: any) { this.listener = fn; }
 };
 
-export function HudOverlay({ actions }: { actions: any }) {
+// 🌟 让它接收动态的 labels 属性
+export function HudOverlay({ actions, labels }: { actions: any, labels: any }) {
   const frunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const trunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const doorPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
@@ -34,6 +35,7 @@ export function HudOverlay({ actions }: { actions: any }) {
   const renderButton = (animPos: Animated.ValueXY, label: string, action: any) => (
     <Animated.View style={[styles.hudWrapper, { transform: animPos.getTranslateTransform() }]} pointerEvents="box-none">
       <TouchableOpacity style={styles.hudButton} activeOpacity={0.7} onPress={action}>
+        {/* 动态渲染文字 */}
         <RNText style={styles.hudText}>{label}</RNText>
       </TouchableOpacity>
     </Animated.View>
@@ -41,10 +43,11 @@ export function HudOverlay({ actions }: { actions: any }) {
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
-      {renderButton(frunkPos, '打开前备箱', actions.frunk)}
-      {renderButton(trunkPos, '打开后备箱', actions.trunk)}
-      {renderButton(doorPos, '🔓 解锁', actions.door)}
-      {renderButton(chargePos, '⚡ 充电口', actions.charge)}
+      {/* 传入动态的 labels */}
+      {renderButton(frunkPos, labels.frunk, actions.frunk)}
+      {renderButton(trunkPos, labels.trunk, actions.trunk)}
+      {renderButton(doorPos, labels.door, actions.door)}
+      {renderButton(chargePos, labels.charge, actions.charge)}
     </View>
   );
 }

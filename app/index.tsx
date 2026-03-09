@@ -36,6 +36,12 @@ export default function Layout() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
+  // 🌟 核心：新增车辆硬件状态的 State
+  const [frunkOpen, setFrunkOpen] = useState(false);
+  const [trunkOpen, setTrunkOpen] = useState(false);
+  const [isLocked, setIsLocked] = useState(true);
+  const [chargePortOpen, setChargePortOpen] = useState(false);
+
   const fetchAccessToken = async (currentToken = refreshToken) => {
     if (!currentToken) return null;
     if (isRefreshingToken) return null; 
@@ -106,10 +112,28 @@ export default function Layout() {
       const chargeState = carData.response?.charge_state;
       const climateState = carData.response?.climate_state;
       const driveState = carData.response?.drive_state;
+      const vehicleState = carData.response?.vehicle_state; // 🌟 获取车门、前后备箱状态
       
-      if (chargeState?.battery_range) setRange(Math.round(chargeState.battery_range).toString());
-      if (climateState?.inside_temp) setTemp(climateState.inside_temp.toFixed(1));
-      if (driveState) setLocationText('已更新最新位置');
+      if (chargeState) {
+        setRange(Math.round(chargeState.battery_range).toString());
+        // 提取充电口状态
+        setChargePortOpen(chargeState.charge_port_door_open);
+      }
+      
+      if (climateState?.inside_temp) {
+        setTemp(climateState.inside_temp.toFixed(1));
+      }
+      
+      if (driveState) {
+        setLocationText('已更新最新位置');
+      }
+
+      // 🌟 解析并提取前后备箱和车锁的状态
+      if (vehicleState) {
+        setFrunkOpen(vehicleState.ft > 0); // ft = front trunk, 大于 0 就是开着
+        setTrunkOpen(vehicleState.rt > 0); // rt = rear trunk
+        setIsLocked(vehicleState.locked);
+      }
 
     } catch (error) {
       console.error('获取车辆数据失败:', error);
@@ -203,8 +227,8 @@ export default function Layout() {
       }
 
       if (res.ok) {
-        Alert.alert('成功', '指令已发送');
-        setTimeout(() => fetchCarData(), 2000);
+        // 🌟 指令发送成功后，给用户一点提示，并立刻去刷新车辆的最新状态
+        setTimeout(() => fetchCarData(), 2000); 
       } else {
         Alert.alert('指令失败', `状态码: ${res.status}`);
       }
@@ -248,18 +272,31 @@ export default function Layout() {
 
             {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
             
-            {/* 🌟 核心：将 3D HUD 按钮与真实的 Fleet API 指令完全绑定！ */}
+            {/* 🌟 核心：全动态化 HUD 交互 */}
             {!!refreshToken && (
-              <HudOverlay actions={{
-                frunk: () => sendCommand('actuate_trunk', { which_trunk: 'front' }),
-                trunk: () => sendCommand('actuate_trunk', { which_trunk: 'rear' }),
-                door: () => sendCommand('door_unlock'),
-                charge: () => sendCommand('charge_port_door_open'),
-              }} />
+              <HudOverlay 
+                labels={{
+                  frunk: frunkOpen ? '关闭前备箱' : '打开前备箱',
+                  trunk: trunkOpen ? '关闭后备箱' : '打开后备箱',
+                  door: isLocked ? '解锁车门' : '🔒 锁车',
+                  charge: chargePortOpen ? '关闭充电口' : '⚡ 充电口'
+                }}
+                actions={{
+                  // actuate_trunk 会自动根据当前状态反转
+                  frunk: () => sendCommand('actuate_trunk', { which_trunk: 'front' }),
+                  trunk: () => sendCommand('actuate_trunk', { which_trunk: 'rear' }),
+                  // 智能判断车门状态发送锁车或解锁
+                  door: () => sendCommand(isLocked ? 'door_unlock' : 'door_lock'),
+                  // 智能判断充电口状态
+                  charge: () => sendCommand(chargePortOpen ? 'charge_port_door_close' : 'charge_port_door_open'),
+                }} 
+              />
             )}
 
             <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>已驻车</Text>
+              <Text style={styles.statusText}>
+                {isLocked ? '已驻车' : '车辆已解锁'}
+              </Text>
             </View>
 
             <TouchableOpacity style={styles.menuIconContainer} onPress={() => setMenuVisible(true)}>
