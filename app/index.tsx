@@ -4,14 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { Audio } from 'expo-av';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import * as WebBrowser from 'expo-web-browser';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Linking,
-  Modal, 
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -21,9 +23,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ChargingMap from './ChargingMap';
 import SettingsMenu from './SettingsMenu';
 import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
-import ChargingMap from './ChargingMap';
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
@@ -51,6 +53,10 @@ export default function Layout() {
   const [accountName, setAccountName] = useState('获取中...');
   const [accountAvatar, setAccountAvatar] = useState('');
   const [accountEmail, setAccountEmail] = useState('已绑定官方账号');
+
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync('#131314');
+  }, []);
 
   const playLockSound = async () => {
     try {
@@ -286,11 +292,13 @@ export default function Layout() {
 
   return (
     <View style={styles.rootContainer}>
-      <StatusBar style="light" />
+      
+      <Stack.Screen options={{ headerShown: false, contentStyle: { backgroundColor: '#131314' } }} />
+      <StatusBar style="light" backgroundColor="#131314" translucent />
 
-      {/* 🌟 insets.top 和 bottom 在这里正确撑开，外层的 #131314 终于能透出来了 */}
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: '#131314' }]}>
+        
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#131314' }}>
           
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
@@ -352,8 +360,8 @@ export default function Layout() {
           </View>
 
           <ScrollView 
-            style={{ flex: 1 }} 
-            contentContainerStyle={styles.contentContainer} 
+            style={{ flex: 1, backgroundColor: '#131314' }} 
+            contentContainerStyle={[styles.contentContainer, { backgroundColor: '#131314' }]} 
             bounces={false} 
             keyboardShouldPersistTaps="handled" 
             showsVerticalScrollIndicator={false}
@@ -426,7 +434,12 @@ export default function Layout() {
           presentationStyle="fullScreen"
           onRequestClose={() => setMapVisible(false)}
         >
-          <ChargingMap onClose={() => setMapVisible(false)} />
+          {/* 🌟 核心：将自动获取到的官方 Token 传递给地图组件 */}
+          <ChargingMap 
+            onClose={() => setMapVisible(false)} 
+            accessToken={accessToken} 
+            vehicleId={vehicleId} 
+          />
         </Modal>
 
       </View>
@@ -436,7 +449,7 @@ export default function Layout() {
 
 const styles = StyleSheet.create({
   rootContainer: { flex: 1, backgroundColor: '#131314' },
-  container: { flex: 1, backgroundColor: '#131314' },
+  container: { flex: 1, backgroundColor: '#131314' }, 
   
   imageContainer: { 
     height: 260, 
@@ -472,6 +485,8 @@ const styles = StyleSheet.create({
   buttonGreen: { backgroundColor: '#81C995', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonText: { color: '#E3E3E3', fontSize: 16, fontWeight: '500' },
   buttonAuthRed: { backgroundColor: '#B3261E', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
+  // 🌟 修复好的文字样式
+  buttonTextWhiteLarge: { color: '#E3E3E3', fontSize: 18, fontWeight: '700' },
   tokenSection: { borderTopWidth: 1, borderTopColor: '#444746', paddingTop: 16, alignItems: 'center' },
   authDesc: { color: '#C4C7C5', fontSize: 13, marginBottom: 12 },
 });
