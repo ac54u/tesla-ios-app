@@ -11,6 +11,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Linking,
+  Modal // 🌟 确保引入了 Modal
+  ,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,6 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import SettingsMenu from './SettingsMenu';
 import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
+// 🌟 引入刚刚写好的充电地图组件
+import ChargingMap from './ChargingMap';
 
 export default function Layout() {
   const [refreshToken, setRefreshToken] = useState('');
@@ -35,6 +39,9 @@ export default function Layout() {
   const [modelLoaded, setModelLoaded] = useState(false);
 
   const [menuVisible, setMenuVisible] = useState(false);
+  // 🌟 新增：控制充电地图显示/隐藏的开关
+  const [mapVisible, setMapVisible] = useState(false);
+  
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
   const [frunkOpen, setFrunkOpen] = useState(false);
@@ -42,7 +49,6 @@ export default function Layout() {
   const [isLocked, setIsLocked] = useState(true);
   const [chargePortOpen, setChargePortOpen] = useState(false);
 
-  // 🌟 账号信息 State：新增邮箱字段
   const [accountName, setAccountName] = useState('获取中...');
   const [accountAvatar, setAccountAvatar] = useState('');
   const [accountEmail, setAccountEmail] = useState('已绑定官方账号');
@@ -93,7 +99,6 @@ export default function Layout() {
     }
   };
 
-  // 🌟 核心修复：直接请求特斯拉的 OIDC 用户信息中心，拿到最真实的头像、名字和邮箱！
   const fetchUserProfile = async (token: string) => {
     try {
       const res = await fetch('https://auth.tesla.cn/oauth2/v3/userinfo', {
@@ -119,7 +124,6 @@ export default function Layout() {
       if (!currentAccess) return;
     }
 
-    // 🌟 在这里同步拉取最新的车主身份信息
     fetchUserProfile(currentAccess);
 
     try {
@@ -128,7 +132,6 @@ export default function Layout() {
       });
 
       if (vRes.status === 401 && !isRetry) {
-        console.log('Token 过期，无感刷新中...');
         const newAccess = await fetchAccessToken(refreshToken);
         if (newAccess) return fetchCarData(refreshToken, true);
         return;
@@ -382,13 +385,13 @@ export default function Layout() {
           </ScrollView>
         </KeyboardAvoidingView>
 
+        {/* 侧边菜单 */}
         <SettingsMenu
           visible={menuVisible}
           onClose={() => setMenuVisible(false)}
           refreshToken={refreshToken}
           accessToken={accessToken}
           vehicleId={vehicleId}
-          // 🌟 传入账号三剑客
           accountName={accountName}
           accountAvatar={accountAvatar}
           accountEmail={accountEmail}
@@ -396,10 +399,24 @@ export default function Layout() {
             handleTeslaOAuthLogin();
           }}
           onLogout={handleResetToken}
+          // 🌟 核心：点击打开地图时，先关闭菜单，再打开地图！
           onOpenMap={() => {
-            WebBrowser.openBrowserAsync('https://www.tesla.cn/findus?filters=supercharger');
+            setMenuVisible(false);
+            setTimeout(() => setMapVisible(true), 300); // 稍微延迟一下，等侧边栏收回去再弹出地图，动画更平滑
           }}
         />
+
+        {/* 🌟 挂载全局地图弹窗组件 */}
+        <Modal
+          visible={mapVisible}
+          animationType="slide"
+          transparent={false}
+          presentationStyle="fullScreen"
+          onRequestClose={() => setMapVisible(false)}
+        >
+          {/* 传入 onClose 属性，供地图组件内的返回按钮调用 */}
+          <ChargingMap onClose={() => setMapVisible(false)} />
+        </Modal>
 
       </SafeAreaView>
     </View>
