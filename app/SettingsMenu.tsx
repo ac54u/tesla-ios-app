@@ -1,13 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
   Modal,
   Platform,
-  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -15,8 +13,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
-import { fetchTeslaUser, getCachedUser } from '../services/userService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -26,6 +22,9 @@ interface SettingsMenuProps {
   refreshToken: string;
   accessToken: string;
   vehicleId: string;
+  // 🌟 新增接收从外面传进来的最新用户信息
+  accountName: string;
+  accountAvatar: string;
   onLogin: () => void;
   onLogout: () => void;
   onOpenMap: () => void;
@@ -37,14 +36,14 @@ export default function SettingsMenu({
   refreshToken,
   accessToken,
   vehicleId,
+  // 🌟 使用外部传进来的数据，彻底解决缓存不更新的问题
+  accountName,
+  accountAvatar,
   onLogin,
   onLogout,
   onOpenMap
 }: SettingsMenuProps) {
 
-  const [userInfo, setUserInfo] = useState<any>(null);
-  const [loadingUser, setLoadingUser] = useState(false);
-  
   const [showModal, setShowModal] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
@@ -53,13 +52,13 @@ export default function SettingsMenu({
     if (visible) {
       setShowModal(true);
       Animated.timing(slideAnim, {
-        toValue: 0, // 滑动到屏幕 0 坐标（完全盖住屏幕）
+        toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(slideAnim, {
-        toValue: SCREEN_WIDTH, // 退回屏幕右侧外部
+        toValue: SCREEN_WIDTH,
         duration: 250,
         useNativeDriver: true,
       }).start(() => {
@@ -68,33 +67,6 @@ export default function SettingsMenu({
     }
   }, [visible]);
 
-  const refreshUser = async () => {
-    if (!accessToken) return;
-    setLoadingUser(true);
-    try {
-      const user = await fetchTeslaUser(accessToken);
-      setUserInfo(user);
-    } catch (e) {
-      console.log('userinfo error', e);
-    } finally {
-      setLoadingUser(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadCache = async () => {
-      const cache = await getCachedUser();
-      if (cache) setUserInfo(cache);
-    };
-    if (visible) loadCache();
-  }, [visible]);
-
-  useEffect(() => {
-    if (visible && accessToken) {
-      refreshUser();
-    }
-  }, [visible, accessToken]);
-
   return (
     <Modal
       transparent
@@ -102,11 +74,9 @@ export default function SettingsMenu({
       animationType="none"
       onRequestClose={onClose}
     >
-      {/* 👇 直接使用 100% 宽度的深黑底色，彻底治愈强迫症 */}
       <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
         <SafeAreaView style={{ flex: 1 }}>
           
-          {/* 👇 官方风格的顶部导航栏 */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={28} color="#fff" />
@@ -117,9 +87,7 @@ export default function SettingsMenu({
           <ScrollView
             style={styles.modalBody}
             showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={loadingUser} onRefresh={refreshUser} tintColor="#fff" />
-            }
+            bounces={false}
           >
             {!refreshToken ? (
               <View style={styles.unauthView}>
@@ -132,30 +100,27 @@ export default function SettingsMenu({
             ) : (
               <View>
                 <View style={styles.profileSection}>
-                  {loadingUser && !userInfo ? (
-                    <ActivityIndicator size="small" color="#fff" style={{ alignSelf: 'flex-start', margin: 20 }} />
-                  ) : (
-                    <>
-                      <Image
-                        source={{
-                          uri: userInfo?.profile_image_url && userInfo.profile_image_url.includes('tesla.cn')
-                            ? userInfo.profile_image_url
-                            : 'https://www.gravatar.com/avatar/0?d=mp',
-                          headers: {
-                            'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
-                            'Accept': '*/*'
-                          }
-                        }}
-                        style={styles.avatar}
-                      />
-                      <Text style={styles.userName}>
-                        {userInfo?.full_name || 'Tesla 车主'}
-                      </Text>
-                      <Text style={styles.userEmail}>
-                        {userInfo?.email || '未知邮箱'}
-                      </Text>
-                    </>
-                  )}
+                  {/* 🌟 实时渲染头像，如果为空则显示默认头像 */}
+                  <Image
+                    source={{
+                      uri: accountAvatar && accountAvatar.includes('tesla.cn')
+                        ? accountAvatar
+                        : 'https://www.gravatar.com/avatar/0?d=mp',
+                      headers: {
+                        'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
+                        'Accept': '*/*'
+                      }
+                    }}
+                    style={styles.avatar}
+                  />
+                  
+                  {/* 🌟 实时渲染名字 */}
+                  <Text style={styles.userName}>
+                    {accountName || 'Tesla 车主'}
+                  </Text>
+                  <Text style={styles.userEmail}>
+                    已绑定官方账号
+                  </Text>
                 </View>
 
                 <View style={styles.settingsList}>
@@ -199,8 +164,8 @@ export default function SettingsMenu({
 const styles = StyleSheet.create({
   menuContainer: {
     flex: 1,
-    width: '100%', // 100% 全屏无死角！
-    backgroundColor: '#000', // 换成深邃的纯黑色，更匹配主页
+    width: '100%',
+    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
