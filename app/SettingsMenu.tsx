@@ -25,7 +25,7 @@ interface SettingsMenuProps {
   vehicleId: string;
   accountName: string;
   accountAvatar: string;
-  accountEmail: string; // 🌟 新增接收真实邮箱
+  accountEmail: string; 
   onLogin: () => void;
   onLogout: () => void;
   onOpenMap: () => void;
@@ -39,7 +39,7 @@ export default function SettingsMenu({
   vehicleId,
   accountName,
   accountAvatar,
-  accountEmail, // 🌟 接收真实邮箱
+  accountEmail,
   onLogin,
   onLogout,
   onOpenMap
@@ -101,7 +101,6 @@ export default function SettingsMenu({
             ) : (
               <View>
                 <View style={styles.profileSection}>
-                  {/* 🌟 核心修复：移除死板的 .includes('tesla.cn') 限制，只要有图片链接就加载！ */}
                   <Image
                     source={{
                       uri: accountAvatar ? accountAvatar : 'https://www.gravatar.com/avatar/0?d=mp',
@@ -117,7 +116,6 @@ export default function SettingsMenu({
                     {accountName || 'Tesla 车主'}
                   </Text>
                   
-                  {/* 🌟 动态显示账号绑定的真实邮箱 */}
                   <Text style={styles.userEmail}>
                     {accountEmail}
                   </Text>
@@ -125,30 +123,34 @@ export default function SettingsMenu({
 
                 <View style={styles.settingsList}>
                   <TouchableOpacity style={styles.settingItem}>
-                    <Ionicons name="gift-outline" size={22} color="#fff" style={styles.settingIcon} />
+                    {/* 🌟 UI 配色改动：图标改为中灰色 #8E8E93 */}
+                    <Ionicons name="gift-outline" size={22} color="#8E8E93" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>引荐奖励</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <Ionicons name="chevron-forward" size={20} color="#5C5C5E" />
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.settingItem} onPress={onOpenMap}>
+                    {/* 充电站保持特有的绿色辨识度 */}
                     <Ionicons name="location-outline" size={22} color="#10B981" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>附近超级充电站</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <Ionicons name="chevron-forward" size={20} color="#5C5C5E" />
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.settingItem}>
-                    <Ionicons name="shield-checkmark-outline" size={22} color="#fff" style={styles.settingIcon} />
+                    {/* 🌟 UI 配色改动：图标改为中灰色 #8E8E93 */}
+                    <Ionicons name="shield-checkmark-outline" size={22} color="#8E8E93" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>隐私与安全</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <Ionicons name="chevron-forward" size={20} color="#5C5C5E" />
                   </TouchableOpacity>
                 </View>
 
+                {/* 🌟 还原官方胶囊红色线框按钮 */}
                 <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
                   <Text style={styles.logoutButtonText}>退出登录</Text>
                 </TouchableOpacity>
@@ -165,7 +167,7 @@ const styles = StyleSheet.create({
   menuContainer: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#000',
+    backgroundColor: '#111111', // 🌟 UI 配色：官方深空灰
   },
   header: {
     flexDirection: 'row',
@@ -215,25 +217,25 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: '#262626', // 🌟 UI 配色：暗淡分割线
     paddingBottom: 30,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     marginBottom: 16,
     backgroundColor: '#333'
   },
   userName: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 4,
   },
   userEmail: {
     color: '#888',
-    fontSize: 14
+    fontSize: 13
   },
   settingsList: {
     marginTop: 10,
@@ -244,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#1C1C1E',
+    borderBottomColor: '#1C1C1E', // 🌟 UI 配色：列表线更暗
   },
   settingIcon: {
     marginRight: 15
@@ -259,7 +261,8 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     borderWidth: 1,
-    borderColor: '#E31937',
+    borderColor: '#E31937', // 🌟 红色线框
+    backgroundColor: 'transparent',
     paddingVertical: 16,
     borderRadius: 50,
     alignItems: 'center',
@@ -267,7 +270,7 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: '#E31937',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600'
   }
 });
