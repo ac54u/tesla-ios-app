@@ -218,7 +218,6 @@ export default function Layout() {
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
-            {/* 🌟 核心修复 1：明确指定 near 和 far 裁剪平面，防止模型离近了被剔除消失 */}
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
               <color attach="background" args={['#000000']} />
               <ambientLight intensity={1.5} />
@@ -230,18 +229,17 @@ export default function Layout() {
                 <Tesla3DModel setModelLoaded={setModelLoaded} />
               </Suspense>
               
+              {/* 🌟 官方展厅模式：彻底屏蔽导致手势锁死的属性，开启极致流畅体验 */}
               {modelLoaded && (
-                {/* 🌟 核心修复 2：彻底关掉 enableDamping，它是移动端手势解不开锁的罪魁祸首！ */}
-                {/* 🌟 核心修复 3：minDistance 设为 6.5，绝对不允许镜头插进车肚子里 */}
                 <OrbitControls 
                   makeDefault 
-                  enableZoom={true} 
-                  minDistance={6.5} 
-                  maxDistance={15} 
-                  enablePan={true} 
-                  panSpeed={0} 
-                  enableDamping={false} 
-                  rotateSpeed={1.0} 
+                  enableZoom={false} 
+                  enablePan={false} 
+                  enableDamping={true} 
+                  dampingFactor={0.06} 
+                  rotateSpeed={0.8}
+                  minPolarAngle={Math.PI / 2.5} 
+                  maxPolarAngle={Math.PI / 2.2} 
                 />
               )}
             </Canvas>
