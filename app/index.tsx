@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
 import { Audio } from 'expo-av';
-// 🌟 核心魔法组件：导入 Stack，用来穿透修改底层背景色
 import { Stack } from 'expo-router'; 
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
@@ -289,13 +288,13 @@ export default function Layout() {
   return (
     <View style={{ flex: 1, backgroundColor: '#131314' }}>
       
-      {/* 🌟 核心魔法：向 Expo 隐藏的父级发送配置，瓦解上下黑边！ */}
       <Stack.Screen options={{ headerShown: false, contentStyle: { backgroundColor: '#131314' } }} />
-
       <StatusBar style="light" />
 
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          
+          {/* 这里是包含了3D模型的顶部区域 */}
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
               <color attach="background" args={['#131314']} />
@@ -434,7 +433,24 @@ export default function Layout() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#131314' },
-  imageContainer: { height: 260, backgroundColor: '#131314', position: 'relative' },
+  
+  // 🌟 这里就是“大厂级”分割线的核心改动
+  imageContainer: { 
+    height: 260, 
+    backgroundColor: '#131314', 
+    position: 'relative',
+    // 极细暗高光线，比背景稍微亮一点点，画出轮廓
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#2A2A2C', 
+    // 微弱的底部黑影，营造出“3D舞台浮在信息面板上方”的立体感
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5, // 适配 Android 的阴影
+    zIndex: 1, // 必须加 zIndex，不然阴影会被下方的 ScrollView 盖住
+  },
+  
   canvas: { ...StyleSheet.absoluteFillObject },
   FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(30, 31, 34, 0.8)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
