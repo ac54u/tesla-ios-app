@@ -8,14 +8,12 @@ export interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
 }
 
-// 1. 高速事件总线
 export const hudEmitter = {
   listener: null as any,
   emit(data: any) { if (this.listener) this.listener(data); },
   subscribe(fn: any) { this.listener = fn; }
 };
 
-// 2. 纯原生的 2D 悬浮 UI 涂层
 export function HudOverlay({ actions }: { actions: any }) {
   const frunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const trunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
@@ -49,11 +47,9 @@ export function HudOverlay({ actions }: { actions: any }) {
   );
 }
 
-// 🌟 3. 性能优化版计算引擎：引入缓存机制，杜绝 CPU 卡顿
 const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
   const { camera, size } = useThree();
   const vec = useRef(new THREE.Vector3());
-  // 缓存静态世界坐标，省去海量的矩阵相乘运算
   const cachedWorldPos = useRef<{ [key: string]: THREE.Vector3 }>({});
 
   useFrame(() => {
@@ -61,19 +57,23 @@ const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
     anchors.forEach((item) => {
       if (!item.ref.current) return;
 
-      // 如果这个锚点还没算过真实世界坐标，就只算这一次！
       if (!cachedWorldPos.current[item.name]) {
         cachedWorldPos.current[item.name] = new THREE.Vector3();
         item.ref.current.getWorldPosition(cachedWorldPos.current[item.name]);
       }
 
-      // 直接拷贝缓存的坐标给到投影相机，性能消耗几乎为 0
       vec.current.copy(cachedWorldPos.current[item.name]);
       vec.current.project(camera);
 
+      // 🌟 终极数学防御：如果是在相机背面，或者是被引擎算崩的 NaN，统统扔到屏幕外！
+      const isBehindCamera = vec.current.z > 1;
+      const px = (vec.current.x * 0.5 + 0.5) * size.width;
+      const py = (vec.current.y * -0.5 + 0.5) * size.height;
+      const isValid = Number.isFinite(px) && Number.isFinite(py);
+
       payload[item.name] = {
-        x: (vec.current.x * 0.5 + 0.5) * size.width,
-        y: (vec.current.y * -0.5 + 0.5) * size.height,
+        x: (isBehindCamera || !isValid) ? -1000 : px,
+        y: (isBehindCamera || !isValid) ? -1000 : py,
       };
     });
     hudEmitter.emit(payload);
@@ -112,12 +112,10 @@ export default function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
         <Center>
           <primitive object={scene} />
         </Center>
-
         {renderAnchorLine(frunkRef, [0, 0.35, 1.2], 0.35)}
         {renderAnchorLine(trunkRef, [0, 0.45, -1.3], 0.4)}
         {renderAnchorLine(doorRef, [0.85, 0.4, 0.1], 0.4)}
         {renderAnchorLine(chargeRef, [0.9, 0.4, -0.9], 0.3)}
-
         <TrackerEngine anchors={anchors} />
       </group>
     </group>

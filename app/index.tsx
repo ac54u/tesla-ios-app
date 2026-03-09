@@ -120,18 +120,13 @@ export default function Layout() {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
       if (url && url.includes('refresh_token=')) {
-        
         WebBrowser.dismissBrowser();
-
         const tokenMatch = url.match(/refresh_token=([^&]+)/);
         if (tokenMatch && tokenMatch[1]) {
           const newToken = tokenMatch[1];
           setRefreshToken(newToken);
-          
           setMenuVisible(false);
-
           await AsyncStorage.setItem('teslaRefreshToken', newToken);
-          
           fetchCarData(newToken);
         }
       }
@@ -223,7 +218,7 @@ export default function Layout() {
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
-            <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40 }}>
+            <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
               <color attach="background" args={['#000000']} />
               <ambientLight intensity={1.5} />
               <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
@@ -234,18 +229,17 @@ export default function Layout() {
                 <Tesla3DModel setModelLoaded={setModelLoaded} />
               </Suspense>
               
-              {/* 🌟 核心修改点：更新了 minDistance 防止穿模，开启了 enablePan 和 panSpeed={0} 防止手势锁死 🌟 */}
+              {/* 🌟 官方展厅模式：彻底屏蔽导致手势锁死的属性，开启极致流畅体验 */}
               {modelLoaded && (
                 <OrbitControls 
                   makeDefault 
-                  enableZoom={true} 
-                  minDistance={5} 
-                  maxDistance={12} 
-                  enablePan={true} 
-                  panSpeed={0} 
+                  enableZoom={false} 
+                  enablePan={false} 
                   enableDamping={true} 
-                  dampingFactor={0.08} 
-                  rotateSpeed={1.2} 
+                  dampingFactor={0.06} 
+                  rotateSpeed={0.8}
+                  minPolarAngle={Math.PI / 2.5} 
+                  maxPolarAngle={Math.PI / 2.2} 
                 />
               )}
             </Canvas>
