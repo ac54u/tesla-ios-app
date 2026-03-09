@@ -105,8 +105,10 @@ export default function Tesla3DModel({ setModelLoaded, showControls = false }: T
 
   const renderAnchorLine = (ref: any, position: any, height: number) => (
     <group position={position}>
-      <mesh><sphereGeometry args={[0.012, 16, 16]} /><meshBasicMaterial color="#ffffff" /></mesh>
-      <mesh position={[0, height / 2, 0]}><cylinderGeometry args={[0.002, 0.002, height]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.6} /></mesh>
+      {/* 🌟 3D 圆点颜色改为护眼白 #E3E3E3 */}
+      <mesh><sphereGeometry args={[0.012, 16, 16]} /><meshBasicMaterial color="#E3E3E3" /></mesh>
+      {/* 🌟 3D 引线颜色改为护眼白 #E3E3E3 */}
+      <mesh position={[0, height / 2, 0]}><cylinderGeometry args={[0.002, 0.002, height]} /><meshBasicMaterial color="#E3E3E3" transparent opacity={0.6} /></mesh>
       <group ref={ref} position={[0, height, 0]} />
     </group>
   );
@@ -136,8 +138,10 @@ export default function Tesla3DModel({ setModelLoaded, showControls = false }: T
 export function FallbackLoader() {
   return (
     <View style={styles.loaderContainer}>
-      <ActivityIndicator size="large" color="#fff" />
-      <RNText style={{ color: '#888', marginTop: 10 }}>模型解析中...</RNText>
+      {/* 🌟 加载圈颜色改为护眼白 #E3E3E3 */}
+      <ActivityIndicator size="large" color="#E3E3E3" />
+      {/* 🌟 加载文字改为次级灰 #C4C7C5 */}
+      <RNText style={{ color: '#C4C7C5', marginTop: 10 }}>模型解析中...</RNText>
     </View>
   );
 }
@@ -152,15 +156,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hudButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    // 🌟 HUD 悬浮背景改为 Material 悬浮深灰半透明
+    backgroundColor: 'rgba(30, 31, 34, 0.8)',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    // 🌟 边框也同步减弱刺眼感，使用半透明护眼白
+    borderColor: 'rgba(227, 227, 227, 0.3)',
   },
   hudText: {
-    color: '#fff',
+    // 🌟 HUD 文字改为护眼白
+    color: '#E3E3E3',
     fontSize: 12,
     fontWeight: '600',
   },
