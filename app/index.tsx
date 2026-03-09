@@ -20,7 +20,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import SettingsMenu from './SettingsMenu';
-// 🌟 引入 3D 模型组件、加载动画、以及全新的 2D 原生中文悬浮层！
 import Tesla3DModel, { FallbackLoader, HudOverlay } from './Tesla3DModel';
 
 export default function Layout() {
@@ -234,16 +233,25 @@ export default function Layout() {
               <Suspense fallback={null}>
                 <Tesla3DModel setModelLoaded={setModelLoaded} />
               </Suspense>
-              {/* 只有在模型加载完成后才开启控制，防止未挂载时报错 */}
+              
+              {/* 🌟 核心修改点：更新了 minDistance 防止穿模，开启了 enablePan 和 panSpeed={0} 防止手势锁死 🌟 */}
               {modelLoaded && (
-                <OrbitControls makeDefault enableZoom={true} minDistance={3} maxDistance={12} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} />
+                <OrbitControls 
+                  makeDefault 
+                  enableZoom={true} 
+                  minDistance={5} 
+                  maxDistance={12} 
+                  enablePan={true} 
+                  panSpeed={0} 
+                  enableDamping={true} 
+                  dampingFactor={0.08} 
+                  rotateSpeed={1.2} 
+                />
               )}
             </Canvas>
 
-            {/* 加载动画 */}
             {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
             
-            {/* 🌟 核心修改点：把纯原生、绝对防崩的中文 HUD 挂载到 3D 画布的上面一层 🌟 */}
             <HudOverlay actions={{
               frunk: () => Alert.alert('前备箱', '正在发送开启指令...'),
               trunk: () => Alert.alert('后备箱', '正在发送开启指令...'),
@@ -251,7 +259,6 @@ export default function Layout() {
               charge: () => Alert.alert('充电口', '正在打开充电口盖'),
             }} />
 
-            {/* 状态徽标和菜单按钮保持在最顶层不变 */}
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>已驻车</Text>
             </View>
