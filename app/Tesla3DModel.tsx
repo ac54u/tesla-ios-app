@@ -1,7 +1,7 @@
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, StyleSheet, Text as RNText, TouchableOpacity, View } from 'react-native';
 import { Center, useGLTF } from '@react-three/drei/native';
 import { useFrame, useThree } from '@react-three/fiber/native';
-import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, Animated, Text as RNText, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as THREE from 'three';
 
 export interface Tesla3DModelProps {
