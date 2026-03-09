@@ -11,9 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Linking,
-  Modal // 🌟 确保引入了 Modal
-  ,
-
+  Modal, // 🌟 确保引入了 Modal
   Platform,
   ScrollView,
   StyleSheet,
@@ -234,27 +232,22 @@ export default function Layout() {
         text: '退出', 
         style: 'destructive', 
         onPress: async () => {
-          // 🌟 1. 物理拔管：直接动用 clear() 核弹，清空 App 在手机里的所有 AsyncStorage 缓存！
           await AsyncStorage.clear();
           
-          // 🌟 2. 内存拔管：把当前所有 State 瞬间打回原形
           setRefreshToken('');
           setAccessToken('');
           setVehicleId('');
           setMenuVisible(false); 
           
-          // 重置 UI 显示文字
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
           setLocationText('定位获取中...');
           
-          // 重置账号信息
           setAccountName('未登录');
           setAccountAvatar('');
           setAccountEmail('');
 
-          // 🌟 3. 重置所有车辆硬件状态（防止下个人登录前，UI上还留着上个人的车门状态）
           setFrunkOpen(false);
           setTrunkOpen(false);
           setIsLocked(true);
@@ -292,14 +285,16 @@ export default function Layout() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    // 🌟 顶层背景修改为 #111111
+    <View style={{ flex: 1, backgroundColor: '#111111' }}>
       <StatusBar style="light" />
 
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.imageContainer}>
             <Canvas style={styles.canvas} camera={{ position: [0, 1.5, 7], fov: 40, near: 0.1, far: 100 }}>
-              <color attach="background" args={['#000000']} />
+              {/* 🌟 3D 画布的背景颜色修改为 #111111 */}
+              <color attach="background" args={['#111111']} />
               <ambientLight intensity={1.5} />
               <directionalLight position={[10, 10, 5]} intensity={2.5} color="white" />
               <directionalLight position={[-10, 0, 5]} intensity={1.5} color="white" />
@@ -413,10 +408,9 @@ export default function Layout() {
             handleTeslaOAuthLogin();
           }}
           onLogout={handleResetToken}
-          // 🌟 核心：点击打开地图时，先关闭菜单，再打开地图！
           onOpenMap={() => {
             setMenuVisible(false);
-            setTimeout(() => setMapVisible(true), 300); // 稍微延迟一下，等侧边栏收回去再弹出地图，动画更平滑
+            setTimeout(() => setMapVisible(true), 300);
           }}
         />
 
@@ -428,7 +422,6 @@ export default function Layout() {
           presentationStyle="fullScreen"
           onRequestClose={() => setMapVisible(false)}
         >
-          {/* 传入 onClose 属性，供地图组件内的返回按钮调用 */}
           <ChargingMap onClose={() => setMapVisible(false)} />
         </Modal>
 
@@ -438,8 +431,10 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  imageContainer: { height: 260, backgroundColor: '#000', position: 'relative' },
+  // 🌟 主容器背景修改为 #111111
+  container: { flex: 1, backgroundColor: '#111111' },
+  // 🌟 图片区域背景修改为 #111111
+  imageContainer: { height: 260, backgroundColor: '#111111', position: 'relative' },
   canvas: { ...StyleSheet.absoluteFillObject },
   FallbackLoaderContainer: { ...StyleSheet.absoluteFillObject, zIndex: -1 }, 
   statusBadge: { position: 'absolute', top: 16, left: 20, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, zIndex: 10 },
@@ -460,7 +455,7 @@ const styles = StyleSheet.create({
   buttonGreen: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   buttonAuthRed: { backgroundColor: '#E31937', paddingVertical: 16, width: '100%', borderRadius: 50, alignItems: 'center', marginTop: 10 },
-  buttonTextWhiteLarge: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
-  tokenSection: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 16, alignItems: 'center' },
+  // 🌟 分割线颜色降低亮度，匹配 SettingsMenu 的暗纹风格
+  tokenSection: { borderTopWidth: 1, borderTopColor: '#262626', paddingTop: 16, alignItems: 'center' },
   authDesc: { color: '#888', fontSize: 13, marginBottom: 12 },
 });
