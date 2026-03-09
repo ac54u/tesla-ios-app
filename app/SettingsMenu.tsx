@@ -80,7 +80,6 @@ export default function SettingsMenu({
           
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-              {/* 🌟 箭头调整为护眼白 */}
               <Ionicons name="chevron-back" size={28} color="#E3E3E3" />
               <Text style={styles.headerTitle}>菜单</Text>
             </TouchableOpacity>
@@ -93,7 +92,6 @@ export default function SettingsMenu({
           >
             {!refreshToken ? (
               <View style={styles.unauthView}>
-                {/* 🌟 未登录图标调整为稍微明显的次级灰 */}
                 <Ionicons name="person-circle-outline" size={80} color="#8E918F" />
                 <Text style={styles.unauthText}>您尚未登录特斯拉账号</Text>
                 <TouchableOpacity style={styles.buttonAuthRed} onPress={onLogin}>
@@ -102,7 +100,8 @@ export default function SettingsMenu({
               </View>
             ) : (
               <View>
-                <View style={styles.profileSection}>
+                {/* 🌟 布局修改：横向排列头像和文字 */}
+                <TouchableOpacity style={styles.profileSection} activeOpacity={0.8}>
                   <Image
                     source={{
                       uri: accountAvatar ? accountAvatar : 'https://www.gravatar.com/avatar/0?d=mp',
@@ -114,28 +113,30 @@ export default function SettingsMenu({
                     style={styles.avatar}
                   />
                   
-                  <Text style={styles.userName}>
-                    {accountName || 'Tesla 车主'}
-                  </Text>
-                  
-                  <Text style={styles.userEmail}>
-                    {accountEmail}
-                  </Text>
-                </View>
+                  {/* 🌟 新增文字容器包裹名字和邮箱 */}
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.userName}>
+                      {accountName || 'Tesla 车主'}
+                    </Text>
+                    <Text style={styles.userEmail}>
+                      {accountEmail}
+                    </Text>
+                  </View>
+
+                  {/* 🌟 补充右侧的小箭头，对齐官方 */}
+                  <Ionicons name="chevron-forward" size={20} color="#8E918F" />
+                </TouchableOpacity>
 
                 <View style={styles.settingsList}>
                   <TouchableOpacity style={styles.settingItem}>
-                    {/* 🌟 图标改为 Material 次级文本灰 #C4C7C5 */}
                     <Ionicons name="gift-outline" size={22} color="#C4C7C5" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>引荐奖励</Text>
                     </View>
-                    {/* 🌟 右侧箭头改为更暗淡的辅助灰 */}
                     <Ionicons name="chevron-forward" size={20} color="#8E918F" />
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.settingItem} onPress={onOpenMap}>
-                    {/* 🌟 绿色调整为暗色模式护眼绿 */}
                     <Ionicons name="location-outline" size={22} color="#81C995" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>附近超级充电站</Text>
@@ -144,7 +145,6 @@ export default function SettingsMenu({
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.settingItem}>
-                    {/* 🌟 图标改为 Material 次级文本灰 #C4C7C5 */}
                     <Ionicons name="shield-checkmark-outline" size={22} color="#C4C7C5" style={styles.settingIcon} />
                     <View style={styles.settingTextContainer}>
                       <Text style={styles.settingTextPrimary}>隐私与安全</Text>
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   menuContainer: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#131314', // 🌟 与主页统一的主背景深灰
+    backgroundColor: '#131314',
   },
   header: {
     flexDirection: 'row',
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   headerTitle: {
-    color: '#E3E3E3', // 🌟 护眼白
+    color: '#E3E3E3', 
     fontSize: 17,
     fontWeight: '500',
     marginLeft: 2,
@@ -199,45 +199,54 @@ const styles = StyleSheet.create({
     marginTop: 60
   },
   unauthText: {
-    color: '#C4C7C5', // 🌟 次级文本灰
+    color: '#C4C7C5', 
     marginTop: 15,
     marginBottom: 30
   },
   buttonAuthRed: {
-    backgroundColor: '#B3261E', // 🌟 Material 3 暗色红
+    backgroundColor: '#B3261E', 
     paddingVertical: 16,
     width: '100%',
     borderRadius: 50,
     alignItems: 'center'
   },
   buttonTextWhiteLarge: {
-    color: '#E3E3E3', // 🌟 护眼白
+    color: '#E3E3E3', 
     fontSize: 18,
     fontWeight: '700'
   },
   profileSection: {
-    alignItems: 'flex-start',
+    // 🌟 改为横向排布并居中对齐
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 20,
     marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#444746', // 🌟 标准深色描边灰
-    paddingBottom: 30,
+    // 🌟 线条改用 hairlineWidth 极细模式
+    borderBottomWidth: StyleSheet.hairlineWidth, 
+    // 🌟 颜色调暗至 #262626
+    borderBottomColor: '#262626', 
   },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    marginBottom: 16,
-    backgroundColor: '#1E1F22' // 🌟 头像占位背景改为悬浮灰
+    backgroundColor: '#1E1F22'
+  },
+  // 🌟 新增：用户信息文本容器，让文字挤在头像和右侧箭头中间
+  profileInfo: {
+    flex: 1,
+    marginLeft: 16, // 与头像拉开距离
+    justifyContent: 'center'
   },
   userName: {
-    color: '#E3E3E3', // 🌟 护眼白
-    fontSize: 20,
+    color: '#E3E3E3', 
+    // 🌟 字体稍微调小一点更显精致
+    fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
   },
   userEmail: {
-    color: '#C4C7C5', // 🌟 次级文本灰
+    color: '#888888', // 🌟 邮箱颜色稍微调暗，增加层级对比
     fontSize: 13
   },
   settingsList: {
@@ -248,8 +257,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#444746', // 🌟 标准深色描边灰
+    // 🌟 线条改用 hairlineWidth 极细模式
+    borderBottomWidth: StyleSheet.hairlineWidth, 
+    // 🌟 颜色调暗至 #262626
+    borderBottomColor: '#262626', 
   },
   settingIcon: {
     marginRight: 15
@@ -258,13 +269,13 @@ const styles = StyleSheet.create({
     flex: 1
   },
   settingTextPrimary: {
-    color: '#E3E3E3', // 🌟 护眼白
+    color: '#E3E3E3', 
     fontSize: 16,
     fontWeight: '500'
   },
   logoutButton: {
     borderWidth: 1,
-    borderColor: '#F2B8B5', // 🌟 Material 暗色模式的错误状态高亮红 (为了在黑底上清晰)
+    borderColor: '#F2B8B5',
     backgroundColor: 'transparent',
     paddingVertical: 16,
     borderRadius: 50,
@@ -272,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 20
   },
   logoutButtonText: {
-    color: '#F2B8B5', // 🌟 同步红色文字
+    color: '#F2B8B5', 
     fontSize: 15,
     fontWeight: '600'
   }
