@@ -1,7 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-// 🌟 核心急救：引入 Animated
 import { Center, useGLTF } from '@react-three/drei/native';
 import { useFrame, useThree } from '@react-three/fiber/native';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Text as RNText, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as THREE from 'three';
 
@@ -16,16 +15,14 @@ export const hudEmitter = {
   subscribe(fn: any) { this.listener = fn; }
 };
 
-// 🌟 2. 满血复活版：使用底层 Animated 引擎的 2D 悬浮 UI
+// 2. 纯原生的 2D 悬浮 UI 涂层
 export function HudOverlay({ actions }: { actions: any }) {
-  // 使用 Animated.ValueXY 绕开 React 渲染机制，初始值放到屏幕外面隐藏起来
   const frunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const trunkPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const doorPos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
   const chargePos = useRef(new Animated.ValueXY({ x: -1000, y: -1000 })).current;
 
   useEffect(() => {
-    // 监听 60fps 坐标，直接用 setValue 赋值到底层，性能消耗极低！
     hudEmitter.subscribe((payload: any) => {
       if (payload.frunk) frunkPos.setValue({ x: payload.frunk.x - 45, y: payload.frunk.y - 15 });
       if (payload.trunk) trunkPos.setValue({ x: payload.trunk.x - 45, y: payload.trunk.y - 15 });
@@ -34,7 +31,6 @@ export function HudOverlay({ actions }: { actions: any }) {
     });
   }, [chargePos, doorPos, frunkPos, trunkPos]);
 
-  // 使用 Animated.View 接收底层位移
   const renderButton = (animPos: Animated.ValueXY, label: string, action: any) => (
     <Animated.View style={[styles.hudWrapper, { transform: animPos.getTranslateTransform() }]} pointerEvents="box-none">
       <TouchableOpacity style={styles.hudButton} activeOpacity={0.7} onPress={action}>
@@ -53,23 +49,32 @@ export function HudOverlay({ actions }: { actions: any }) {
   );
 }
 
-// 3. 隐形计算引擎：在 3D 世界里算好像素发给 2D UI
+// 🌟 3. 性能优化版计算引擎：引入缓存机制，杜绝 CPU 卡顿
 const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
   const { camera, size } = useThree();
   const vec = useRef(new THREE.Vector3());
+  // 缓存静态世界坐标，省去海量的矩阵相乘运算
+  const cachedWorldPos = useRef<{ [key: string]: THREE.Vector3 }>({});
 
   useFrame(() => {
     const payload: any = {};
     anchors.forEach((item) => {
-      if (item.ref.current) {
-        // 获取模型放大旋转后的真实世界坐标
-        item.ref.current.getWorldPosition(vec.current);
-        vec.current.project(camera);
-        payload[item.name] = {
-          x: (vec.current.x * 0.5 + 0.5) * size.width,
-          y: (vec.current.y * -0.5 + 0.5) * size.height,
-        };
+      if (!item.ref.current) return;
+
+      // 如果这个锚点还没算过真实世界坐标，就只算这一次！
+      if (!cachedWorldPos.current[item.name]) {
+        cachedWorldPos.current[item.name] = new THREE.Vector3();
+        item.ref.current.getWorldPosition(cachedWorldPos.current[item.name]);
       }
+
+      // 直接拷贝缓存的坐标给到投影相机，性能消耗几乎为 0
+      vec.current.copy(cachedWorldPos.current[item.name]);
+      vec.current.project(camera);
+
+      payload[item.name] = {
+        x: (vec.current.x * 0.5 + 0.5) * size.width,
+        y: (vec.current.y * -0.5 + 0.5) * size.height,
+      };
     });
     hudEmitter.emit(payload);
   });
@@ -97,7 +102,6 @@ export default function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
     <group position={position}>
       <mesh><sphereGeometry args={[0.012, 16, 16]} /><meshBasicMaterial color="#ffffff" /></mesh>
       <mesh position={[0, height / 2, 0]}><cylinderGeometry args={[0.002, 0.002, height]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.6} /></mesh>
-      {/* 极点锚点 */}
       <group ref={ref} position={[0, height, 0]} />
     </group>
   );

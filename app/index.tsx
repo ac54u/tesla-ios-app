@@ -236,7 +236,7 @@ export default function Layout() {
               </Suspense>
               {/* 只有在模型加载完成后才开启控制，防止未挂载时报错 */}
               {modelLoaded && (
-                <OrbitControls enableZoom={true} minDistance={3} maxDistance={12} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} />
+                <OrbitControls makeDefault enableZoom={true} minDistance={3} maxDistance={12} enablePan={false} enableDamping={true} dampingFactor={0.08} rotateSpeed={1.2} />
               )}
             </Canvas>
 
