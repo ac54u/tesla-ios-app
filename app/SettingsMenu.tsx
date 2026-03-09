@@ -1,3 +1,4 @@
+// app/SettingsMenu.tsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -22,9 +23,9 @@ interface SettingsMenuProps {
   refreshToken: string;
   accessToken: string;
   vehicleId: string;
-  // 🌟 新增接收从外面传进来的最新用户信息
   accountName: string;
   accountAvatar: string;
+  accountEmail: string; // 🌟 新增接收真实邮箱
   onLogin: () => void;
   onLogout: () => void;
   onOpenMap: () => void;
@@ -36,9 +37,9 @@ export default function SettingsMenu({
   refreshToken,
   accessToken,
   vehicleId,
-  // 🌟 使用外部传进来的数据，彻底解决缓存不更新的问题
   accountName,
   accountAvatar,
+  accountEmail, // 🌟 接收真实邮箱
   onLogin,
   onLogout,
   onOpenMap
@@ -100,12 +101,10 @@ export default function SettingsMenu({
             ) : (
               <View>
                 <View style={styles.profileSection}>
-                  {/* 🌟 实时渲染头像，如果为空则显示默认头像 */}
+                  {/* 🌟 核心修复：移除死板的 .includes('tesla.cn') 限制，只要有图片链接就加载！ */}
                   <Image
                     source={{
-                      uri: accountAvatar && accountAvatar.includes('tesla.cn')
-                        ? accountAvatar
-                        : 'https://www.gravatar.com/avatar/0?d=mp',
+                      uri: accountAvatar ? accountAvatar : 'https://www.gravatar.com/avatar/0?d=mp',
                       headers: {
                         'User-Agent': 'TeslaV4/4.54.3 (com.teslamotors.TeslaApp; build:4107; iOS 17.0.0) Alamofire/5.2.1',
                         'Accept': '*/*'
@@ -114,12 +113,13 @@ export default function SettingsMenu({
                     style={styles.avatar}
                   />
                   
-                  {/* 🌟 实时渲染名字 */}
                   <Text style={styles.userName}>
                     {accountName || 'Tesla 车主'}
                   </Text>
+                  
+                  {/* 🌟 动态显示账号绑定的真实邮箱 */}
                   <Text style={styles.userEmail}>
-                    已绑定官方账号
+                    {accountEmail}
                   </Text>
                 </View>
 

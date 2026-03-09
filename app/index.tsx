@@ -3,10 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrbitControls } from '@react-three/drei/native';
 import { Canvas } from '@react-three/fiber/native';
+import { Audio } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
-// 🌟 引入 Audio 模块
-import { Audio } from 'expo-av';
 import React, { Suspense, useEffect, useState } from 'react';
 import {
   Alert,
@@ -43,20 +42,19 @@ export default function Layout() {
   const [isLocked, setIsLocked] = useState(true);
   const [chargePortOpen, setChargePortOpen] = useState(false);
 
-  // 🌟 核心：播放本地锁车音效的函数
+  // 🌟 账号信息 State：新增邮箱字段
+  const [accountName, setAccountName] = useState('获取中...');
+  const [accountAvatar, setAccountAvatar] = useState('');
+  const [accountEmail, setAccountEmail] = useState('已绑定官方账号');
+
   const playLockSound = async () => {
     try {
-      // 加载本地 assets 里的 lock.wav 文件
       const { sound } = await Audio.Sound.createAsync(
         require('../assets/lock.wav')
       );
       await sound.playAsync();
-      
-      // 播放完毕后自动从内存中卸载，防止内存泄漏
       sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.didJustFinish) {
-          sound.unloadAsync();
-        }
+        if (status.didJustFinish) sound.unloadAsync();
       });
     } catch (error) {
       console.log('播放音效失败:', error);
@@ -95,12 +93,34 @@ export default function Layout() {
     }
   };
 
+  // 🌟 核心修复：直接请求特斯拉的 OIDC 用户信息中心，拿到最真实的头像、名字和邮箱！
+  const fetchUserProfile = async (token: string) => {
+    try {
+      const res = await fetch('https://auth.tesla.cn/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        if (user) {
+          setAccountName(user.name || user.preferred_username || 'Tesla 车主');
+          setAccountAvatar(user.picture || '');
+          setAccountEmail(user.email || '已绑定官方账号');
+        }
+      }
+    } catch (error) {
+      console.error('获取车主身份信息失败:', error);
+    }
+  };
+
   const fetchCarData = async (tokenToUse = refreshToken, isRetry = false) => {
     let currentAccess = accessToken;
     if (!currentAccess) {
       currentAccess = await fetchAccessToken(tokenToUse);
       if (!currentAccess) return;
     }
+
+    // 🌟 在这里同步拉取最新的车主身份信息
+    fetchUserProfile(currentAccess);
 
     try {
       const vRes = await fetch('https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/vehicles', {
@@ -139,21 +159,14 @@ export default function Layout() {
         setRange(Math.round(chargeState.battery_range).toString());
         setChargePortOpen(chargeState.charge_port_door_open);
       }
-      
-      if (climateState?.inside_temp) {
-        setTemp(climateState.inside_temp.toFixed(1));
-      }
-      
-      if (driveState) {
-        setLocationText('已更新最新位置');
-      }
+      if (climateState?.inside_temp) setTemp(climateState.inside_temp.toFixed(1));
+      if (driveState) setLocationText('已更新最新位置');
 
       if (vehicleState) {
         setFrunkOpen(vehicleState.ft > 0); 
         setTrunkOpen(vehicleState.rt > 0); 
         setIsLocked(vehicleState.locked);
       }
-
     } catch (error) {
       console.error('获取车辆数据失败:', error);
     }
@@ -188,6 +201,8 @@ export default function Layout() {
         setTimeout(() => fetchCarData(savedToken), 500); 
       } else {
         setVehicleName('请先登录特斯拉账号');
+        setAccountName('未登录');
+        setAccountEmail('');
       }
     };
     loadToken();
@@ -223,6 +238,10 @@ export default function Layout() {
           setVehicleName('请先登录特斯拉账号');
           setRange('---');
           setTemp('--');
+          
+          setAccountName('未登录');
+          setAccountAvatar('');
+          setAccountEmail('');
         }
       }
     ]);
@@ -246,11 +265,7 @@ export default function Layout() {
       }
 
       if (res.ok) {
-        // 🌟 如果执行的是“锁车”指令，并且 API 返回成功，立刻播放音效！
-        if (endpoint === 'door_lock') {
-          playLockSound();
-        }
-
+        if (endpoint === 'door_lock') playLockSound();
         Alert.alert('成功', '指令已发送');
         setTimeout(() => fetchCarData(), 2000); 
       } else {
@@ -373,6 +388,10 @@ export default function Layout() {
           refreshToken={refreshToken}
           accessToken={accessToken}
           vehicleId={vehicleId}
+          // 🌟 传入账号三剑客
+          accountName={accountName}
+          accountAvatar={accountAvatar}
+          accountEmail={accountEmail}
           onLogin={() => { 
             handleTeslaOAuthLogin();
           }}
