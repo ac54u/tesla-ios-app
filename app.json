@@ -3,7 +3,7 @@
     "name": "刺猬Claw",
     "slug": "ciwei-claw",
     "version": "1.0.0",
-    "scheme": "ciwei-claw",
+    "scheme": "ciwei",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
