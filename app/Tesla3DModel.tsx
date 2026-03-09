@@ -1,11 +1,13 @@
-import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text as RNText, TouchableOpacity, View } from 'react-native';
 import { Center, useGLTF } from '@react-three/drei/native';
 import { useFrame, useThree } from '@react-three/fiber/native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Text as RNText, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as THREE from 'three';
 
 export interface Tesla3DModelProps {
   setModelLoaded: (loaded: boolean) => void;
+  // 🌟 新增开关：是否显示控制引线
+  showControls?: boolean;
 }
 
 export const hudEmitter = {
@@ -65,7 +67,6 @@ const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
       vec.current.copy(cachedWorldPos.current[item.name]);
       vec.current.project(camera);
 
-      // 🌟 终极数学防御：如果是在相机背面，或者是被引擎算崩的 NaN，统统扔到屏幕外！
       const isBehindCamera = vec.current.z > 1;
       const px = (vec.current.x * 0.5 + 0.5) * size.width;
       const py = (vec.current.y * -0.5 + 0.5) * size.height;
@@ -81,7 +82,8 @@ const TrackerEngine = ({ anchors }: { anchors: any[] }) => {
   return null;
 };
 
-export default function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
+// 🌟 接收 showControls 属性，默认为 false
+export default function Tesla3DModel({ setModelLoaded, showControls = false }: Tesla3DModelProps) {
   const { scene } = useGLTF('https://cdn.jsdelivr.net/gh/ac54u/tesla-ios-app@main/assets/tesla_cybertruck.glb') as any;
   
   useEffect(() => { setModelLoaded(true); }, [setModelLoaded]);
@@ -112,11 +114,17 @@ export default function Tesla3DModel({ setModelLoaded }: Tesla3DModelProps) {
         <Center>
           <primitive object={scene} />
         </Center>
-        {renderAnchorLine(frunkRef, [0, 0.35, 1.2], 0.35)}
-        {renderAnchorLine(trunkRef, [0, 0.45, -1.3], 0.4)}
-        {renderAnchorLine(doorRef, [0.85, 0.4, 0.1], 0.4)}
-        {renderAnchorLine(chargeRef, [0.9, 0.4, -0.9], 0.3)}
-        <TrackerEngine anchors={anchors} />
+        
+        {/* 🌟 核心逻辑：只有在 showControls 为 true 时，才渲染节点和计算引擎 */}
+        {showControls && (
+          <>
+            {renderAnchorLine(frunkRef, [0, 0.35, 1.2], 0.35)}
+            {renderAnchorLine(trunkRef, [0, 0.45, -1.3], 0.4)}
+            {renderAnchorLine(doorRef, [0.85, 0.4, 0.1], 0.4)}
+            {renderAnchorLine(chargeRef, [0.9, 0.4, -0.9], 0.3)}
+            <TrackerEngine anchors={anchors} />
+          </>
+        )}
       </group>
     </group>
   );

@@ -226,10 +226,13 @@ export default function Layout() {
               <directionalLight position={[0, 5, -10]} intensity={2.5} color="white" />
               <directionalLight position={[0, 10, 0]} intensity={1.5} color="white" />
               <Suspense fallback={null}>
-                <Tesla3DModel setModelLoaded={setModelLoaded} />
+                {/* 🌟 传入 showControls 状态，只有拥有 refreshToken 时才告诉 3D 引擎显示锚点 */}
+                <Tesla3DModel 
+                  setModelLoaded={setModelLoaded} 
+                  showControls={!!refreshToken} 
+                />
               </Suspense>
               
-              {/* 🌟 官方展厅模式：彻底屏蔽导致手势锁死的属性，开启极致流畅体验 */}
               {modelLoaded && (
                 <OrbitControls 
                   makeDefault 
@@ -246,12 +249,15 @@ export default function Layout() {
 
             {!modelLoaded && <View style={styles.FallbackLoaderContainer}><FallbackLoader /></View>}
             
-            <HudOverlay actions={{
-              frunk: () => Alert.alert('前备箱', '正在发送开启指令...'),
-              trunk: () => Alert.alert('后备箱', '正在发送开启指令...'),
-              door: () => Alert.alert('车门', '车辆已解锁'),
-              charge: () => Alert.alert('充电口', '正在打开充电口盖'),
-            }} />
+            {/* 🌟 只有在已登录状态下，才渲染 2D 交互按钮层 */}
+            {!!refreshToken && (
+              <HudOverlay actions={{
+                frunk: () => Alert.alert('前备箱', '正在发送开启指令...'),
+                trunk: () => Alert.alert('后备箱', '正在发送开启指令...'),
+                door: () => Alert.alert('车门', '车辆已解锁'),
+                charge: () => Alert.alert('充电口', '正在打开充电口盖'),
+              }} />
+            )}
 
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>已驻车</Text>
